@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +30,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -96,6 +96,8 @@ public class Main
 
     private String baseUrl;
 
+    private List<ArtifactListReader> artifactListReaders;
+
     public Main( final Options opts )
         throws MalformedURLException
     {
@@ -155,13 +157,15 @@ public class Main
         }
     }
 
-    private void download( final String file )
+    private void download( final String filepath )
     {
-        System.out.println( "Downloading artifacts from: " + file );
+        System.out.println( "Downloading artifacts from: " + filepath );
         try
         {
-            final List<String> lines = FileUtils.readLines( new File( file ) );
-            for ( final String path : lines )
+            File file = new File( filepath );
+            ArtifactListReader reader = getArtifactListReader( file );
+            final List<String> paths = reader.readPaths( file );
+            for ( final String path : paths )
             {
                 executor.execute( newDownloader( path ) );
             }
@@ -169,7 +173,7 @@ public class Main
         catch ( final IOException e )
         {
             e.printStackTrace();
-            System.err.printf( "\n\nFailed to read paths from file: %s. See above for more information.\n", file );
+            System.err.printf( "\n\nFailed to read paths from file: %s. See above for more information.\n", filepath );
         }
 
         while ( counter > 0 )
@@ -183,11 +187,23 @@ public class Main
                 }
                 catch ( final InterruptedException e )
                 {
-                    System.err.println( "Interrupted waiting for downloads to complete for: " + file );
+                    System.err.println( "Interrupted waiting for downloads to complete for: " + filepath );
                     break;
                 }
             }
         }
+    }
+
+    private ArtifactListReader getArtifactListReader( File file )
+    {
+        for ( ArtifactListReader reader : artifactListReaders )
+        {
+            if ( reader.supports( file ) )
+            {
+                return reader;
+            }
+        }
+        throw new RuntimeException( "No reader supports file " + file.getPath() + '.' );
     }
 
     private Runnable newDownloader( final String path )
@@ -284,6 +300,10 @@ public class Main
 
             return t;
         } );
+
+        artifactListReaders = new ArrayList<>( 2 );
+        artifactListReaders.add( new PlaintextArtifactListReader() );
+        artifactListReaders.add( new PomArtifactListReader() );
 
         baseUrl = opts.getBaseUrl();
         if ( baseUrl == null )

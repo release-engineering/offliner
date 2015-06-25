@@ -17,6 +17,7 @@ package com.redhat.rcm.offliner;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
@@ -31,14 +32,24 @@ import org.apache.commons.io.FileUtils;
 public class PlaintextArtifactListReader implements ArtifactListReader
 {
 
-    @Override
-    public List<String> readPaths( File file ) throws IOException
+    private String repoUrl;
+
+    public PlaintextArtifactListReader( final String repoUrl )
     {
-        return FileUtils.readLines( file );
+        this.repoUrl = repoUrl;
     }
 
     @Override
-    public boolean supports( File file )
+    public ArtifactList readPaths( final File file ) throws IOException
+    {
+        List<String> paths = FileUtils.readLines( file );
+        List<String> repositories = Collections.singletonList( repoUrl );
+        ArtifactList result = new ArtifactList( paths, repositories );
+        return result;
+    }
+
+    @Override
+    public boolean supports( final File file )
     {
         String filename = file.getName();
         // TODO think of a better way how to check if the file is supported by this reader

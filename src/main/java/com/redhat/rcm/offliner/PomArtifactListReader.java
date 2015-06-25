@@ -19,12 +19,13 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.Repository;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
@@ -38,7 +39,7 @@ public class PomArtifactListReader
 {
 
     @Override
-    public List<String> readPaths( File file )
+    public ArtifactList readPaths( final File file )
         throws IOException
     {
         Reader reader = new FileReader( file );
@@ -56,7 +57,7 @@ public class PomArtifactListReader
             reader.close();
         }
 
-        List<String> result = new ArrayList<>();
+        ArtifactList result = new ArtifactList();
         for ( Dependency dep : model.getDependencies() )
         {
             String path;
@@ -73,14 +74,27 @@ public class PomArtifactListReader
                                       dep.getClassifier(), dep.getType() );
             }
 
-            result.add( path );
+            result.addPath( path );
+        }
+
+        Map<String, String> repoUrlMap = new LinkedHashMap<>( model.getRepositories().size() );
+        for ( Repository repository : model.getRepositories() )
+        {
+            repoUrlMap.put( repository.getId(), repository.getUrl() );
+        }
+
+        // TODO postprocess the repositories based on settings.xml or whatever else
+
+        for ( String repoUrl : repoUrlMap.values() )
+        {
+            result.addRepositoryUrl( repoUrl );
         }
 
         return result;
     }
 
     @Override
-    public boolean supports( File file )
+    public boolean supports( final File file )
     {
         String filename = file.getName();
         return "pom.xml".equals( filename ) || filename.endsWith( ".pom" );

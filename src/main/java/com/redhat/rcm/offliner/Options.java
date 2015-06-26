@@ -59,6 +59,9 @@ public class Options
     @Option( name = "-d", aliases = { "--download", "--dir" }, metaVar = "DIR", usage = "Download directory (default: ./repository)" )
     private File downloads;
 
+    @Option( name = "-s", aliases = { "--mavensettings" }, metaVar = "FILE", usage = "Path to settings.xml used when a pom is used as the source file" )
+    private File settingsXml;
+
     @Option( name = "-h", aliases = { "--help" }, help = true, usage = "Print this help screen and exit" )
     private boolean help;
 
@@ -93,7 +96,7 @@ public class Options
             System.err.println();
         }
 
-        System.err.println( "Usage: $0 [OPTIONS] [<target-path>]" );
+        System.err.println( "Usage: $0 [OPTIONS] FILES" );
         System.err.println();
         System.err.println();
         parser.printUsage( System.err );
@@ -198,6 +201,16 @@ public class Options
     public void setDownloads( final File downloads )
     {
         this.downloads = downloads;
+    }
+
+    public File getSettingsXml()
+    {
+        return settingsXml;
+    }
+
+    public void setSettingsXml( File settingsXml )
+    {
+        this.settingsXml = settingsXml;
     }
 
 }

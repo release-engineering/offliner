@@ -23,6 +23,7 @@ import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,9 +95,8 @@ public class Main
 
     private ConcurrentHashMap<String, Throwable> errors;
 
-    private String baseUrl;
-
     private List<ArtifactListReader> artifactListReaders;
+
 
     public Main( final Options opts )
         throws MalformedURLException
@@ -104,6 +104,7 @@ public class Main
         this.opts = opts;
         init();
     }
+
 
     private void run()
     {
@@ -164,10 +165,24 @@ public class Main
         {
             File file = new File( filepath );
             ArtifactListReader reader = getArtifactListReader( file );
-            final List<String> paths = reader.readPaths( file );
+            ArtifactList artifactList = reader.readPaths( file );
+            final List<String> paths = artifactList.getPaths();
+            final List<String> baseUrls;
+            if ( opts.getBaseUrl() == null )
+            {
+                baseUrls = artifactList.getRepositoryUrls();
+                if ( baseUrls.isEmpty() )
+                {
+                    baseUrls.add( Options.DEFAULT_REPO_URL );
+                }
+            }
+            else
+            {
+                baseUrls = Collections.singletonList( opts.getBaseUrl() );
+            }
             for ( final String path : paths )
             {
-                executor.execute( newDownloader( path ) );
+                executor.execute( newDownloader( baseUrls, path ) );
             }
         }
         catch ( final IOException e )
@@ -206,7 +221,7 @@ public class Main
         throw new RuntimeException( "No reader supports file " + file.getPath() + '.' );
     }
 
-    private Runnable newDownloader( final String path )
+    private Runnable newDownloader( final List<String> baseUrls, final String path )
     {
         return ( ) -> {
             final String name = Thread.currentThread()
@@ -216,16 +231,6 @@ public class Main
             try
             {
                 counter++;
-                String url;
-                try
-                {
-                    url = UrlUtils.buildUrl( baseUrl, path );
-                }
-                catch ( final Exception e )
-                {
-                    errors.put( path, e );
-                    return;
-                }
 
                 final File target = new File( opts.getDownloads(), path );
                 final File dir = target.getParentFile();
@@ -234,52 +239,84 @@ public class Main
                 final File part = new File( dir, target.getName() + ".part" );
                 part.deleteOnExit();
 
-                System.out.println( ">>>Downloading: " + url );
-
-                final HttpClientContext context = new HttpClientContext( contextPrototype );
-                final HttpGet request = new HttpGet( url );
-                try (FileOutputStream out = new FileOutputStream( part );
-                                CloseableHttpResponse response = client.execute( request, context ))
+                int reposRemaining = baseUrls.size();
+                for ( String baseUrl : baseUrls )
                 {
-                    if ( response.getStatusLine()
-                                 .getStatusCode() != 200 )
+                    reposRemaining--;
+                    String url;
+                    try
                     {
-                        final String serverError = IOUtils.toString( response.getEntity()
-                                                                             .getContent() );
-                        throw new IOException( "Error downloading path: " + path + ".\n" + SEP + "\nServer status: "
-                            + response.getStatusLine() + "\nServer response was:\n" + serverError + "\n"
-                            + SEP + "\n\nLocal stack trace:" );
+                        url = UrlUtils.buildUrl( baseUrl, path );
+                    }
+                    catch ( final Exception e )
+                    {
+                        errors.put( path, e );
+                        return;
                     }
 
-                    IOUtils.copy( response.getEntity()
-                                          .getContent(), out );
+                    System.out.println( ">>>Downloading: " + url );
 
-                    out.close();
-                    part.renameTo( target );
-
-                    System.out.println( "<<<Downloaded: " + url );
-                }
-                catch ( final IOException e )
-                {
-                    System.out.println( "FAIL: " + url );
-                    errors.put( path, e );
-                }
-                finally
-                {
-                    if ( request != null )
+                    final HttpClientContext context = new HttpClientContext( contextPrototype );
+                    final HttpGet request = new HttpGet( url );
+                    try (CloseableHttpResponse response = client.execute( request, context ))
                     {
-                        request.releaseConnection();
-
-                        if ( request instanceof AbstractExecutionAwareRequest )
+                        int statusCode = response.getStatusLine().getStatusCode();
+                        if ( statusCode == 200 )
                         {
-                            ( (AbstractExecutionAwareRequest) request ).reset();
-                        }
-                    }
+                            try (FileOutputStream out = new FileOutputStream( part ))
+                            {
+                                IOUtils.copy( response.getEntity()
+                                              .getContent(), out );
 
-                    counter--;
-                    synchronized ( Main.this )
+                                out.close();
+                            }
+                            part.renameTo( target );
+
+                            System.out.println( "<<<Downloaded: " + url );
+
+                            break;
+                        }
+                        else if ( statusCode == 404 )
+                        {
+                            System.out.println( "<<<Not Found: " + url );
+                            if ( reposRemaining == 0 )
+                            {
+                                throw new IOException( "Error downloading path: " + path + ". The artifact was not "
+                                                + "found in any of the provided repositories." );
+                            }
+                        }
+                        else
+                        {
+                            final String serverError = IOUtils.toString( response.getEntity()
+                                                                         .getContent() );
+                            throw new IOException( "Error downloading path: " + path + ".\n" + SEP + "\nServer status: "
+                                            + response.getStatusLine() + "\nServer response was:\n" + serverError + "\n"
+                                            + SEP + "\n\nLocal stack trace:" );
+                        }
+
+                    }
+                    catch ( final IOException e )
                     {
-                        Main.this.notifyAll();
+                        System.out.println( "FAIL: " + url );
+                        errors.put( path, e );
+                    }
+                    finally
+                    {
+                        if ( request != null )
+                        {
+                            request.releaseConnection();
+
+                            if ( request instanceof AbstractExecutionAwareRequest )
+                            {
+                                ( (AbstractExecutionAwareRequest) request ).reset();
+                            }
+                        }
+
+                        counter--;
+                        synchronized ( Main.this )
+                        {
+                            Main.this.notifyAll();
+                        }
                     }
                 }
             }
@@ -300,16 +337,6 @@ public class Main
 
             return t;
         } );
-
-        artifactListReaders = new ArrayList<>( 2 );
-        artifactListReaders.add( new PlaintextArtifactListReader() );
-        artifactListReaders.add( new PomArtifactListReader() );
-
-        baseUrl = opts.getBaseUrl();
-        if ( baseUrl == null )
-        {
-            baseUrl = Options.DEFAULT_REPO_URL;
-        }
 
         errors = new ConcurrentHashMap<String, Throwable>();
 
@@ -367,6 +394,15 @@ public class Main
 
         }
 
+        String baseUrl = opts.getBaseUrl();
+        if ( baseUrl == null )
+        {
+            baseUrl = Options.DEFAULT_REPO_URL;
+        }
+
+        artifactListReaders = new ArrayList<>( 2 );
+        artifactListReaders.add( new PlaintextArtifactListReader( baseUrl ) );
+        artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), creds ) );
     }
 
 }

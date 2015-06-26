@@ -17,7 +17,6 @@ package com.redhat.rcm.offliner;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Interface of a paths reader.
@@ -29,9 +28,9 @@ public interface ArtifactListReader
      * Reads list of relative paths in a source file.
      *
      * @param file source file
-     * @return list of Strings, where each line points to a downloadable file
+     * @return artifact list containing list of downloadable files along with list of repositories
      */
-    List<String> readPaths( File file ) throws IOException;
+    ArtifactList readPaths( File file ) throws IOException;
 
     /**
      * CHecks if the given file is supported by this paths reader. The check is performed based on the file contents

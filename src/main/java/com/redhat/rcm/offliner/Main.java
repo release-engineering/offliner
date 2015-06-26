@@ -338,16 +338,6 @@ public class Main
             return t;
         } );
 
-        String baseUrl = opts.getBaseUrl();
-        if ( baseUrl == null )
-        {
-            baseUrl = Options.DEFAULT_REPO_URL;
-        }
-
-        artifactListReaders = new ArrayList<>( 2 );
-        artifactListReaders.add( new PlaintextArtifactListReader( baseUrl ) );
-        artifactListReaders.add( new PomArtifactListReader() );
-
         errors = new ConcurrentHashMap<String, Throwable>();
 
         final PoolingHttpClientConnectionManager ccm = new PoolingHttpClientConnectionManager();
@@ -404,6 +394,15 @@ public class Main
 
         }
 
+        String baseUrl = opts.getBaseUrl();
+        if ( baseUrl == null )
+        {
+            baseUrl = Options.DEFAULT_REPO_URL;
+        }
+
+        artifactListReaders = new ArrayList<>( 2 );
+        artifactListReaders.add( new PlaintextArtifactListReader( baseUrl ) );
+        artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), creds ) );
     }
 
 }

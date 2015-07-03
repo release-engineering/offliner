@@ -166,6 +166,7 @@ public class PomArtifactListReader
                 mirrorRepository.setLayout( mirror.getLayout() );
                 mirrorRepository.setReleases( repository.getReleases() );
                 mirrorRepository.setSnapshots( repository.getSnapshots() );
+                mirrorRepository.setUrl( mirror.getUrl() );
                 Collections.replaceAll( repositories, repository, mirrorRepository );
             }
         }

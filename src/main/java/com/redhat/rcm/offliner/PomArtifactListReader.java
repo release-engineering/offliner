@@ -24,8 +24,10 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.auth.AuthScope;
@@ -82,34 +84,41 @@ public class PomArtifactListReader
             throw new RuntimeException( "Failed to read the source pom file due to a wrong file contents.", ex);
         }
 
-        ArtifactList result = new ArtifactList();
+        Set<String> paths = new LinkedHashSet<>();
         for ( Dependency dep : model.getDependencies() )
         {
+            String dirPath = String.format( "%s/%s/%s", dep.getGroupId().replace( '.', '/' ), dep.getArtifactId(),
+                                            dep.getVersion() );
+            if ( !"pom".equals( dep.getType() ))
+            {
+                paths.add( String.format( "%s/%s-%s.pom", dirPath, dep.getArtifactId(), dep.getVersion() ) );
+            }
+
             String path;
             if ( StringUtils.isEmpty( dep.getClassifier() ) )
             {
-                path = String.format( "%s/%s/%s/%s-%s.%s", dep.getGroupId().replace( '.', '/' ),
-                                      dep.getArtifactId(), dep.getVersion(), dep.getArtifactId(), dep.getVersion(),
-                                      dep.getType() );
+                path = String.format( "%s/%s-%s.%s", dirPath, dep.getArtifactId(), dep.getVersion(), dep.getType() );
             }
             else
             {
-                path = String.format( "%s/%s/%s/%s-%s-%s.%s", dep.getGroupId().replace( '.', '/' ),
-                                      dep.getArtifactId(), dep.getVersion(), dep.getArtifactId(), dep.getVersion(),
+                path = String.format( "%s/%s-%s-%s.%s", dirPath, dep.getArtifactId(), dep.getVersion(),
                                       dep.getClassifier(), dep.getType() );
             }
 
-            result.addPath( path );
+            paths.add( path );
         }
 
         List<Repository> repositories = model.getRepositories();
 
         processSettingsXml( repositories );
 
+        List<String> repoUrls = new ArrayList<>( repositories.size() );
         for ( Repository repository : repositories )
         {
-            result.addRepositoryUrl( repository.getUrl() );
+            repoUrls.add( repository.getUrl() );
         }
+
+        ArtifactList result = new ArtifactList( new ArrayList<String>( paths ), repoUrls );
 
         return result;
     }

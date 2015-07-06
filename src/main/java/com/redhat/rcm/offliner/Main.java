@@ -139,6 +139,12 @@ public class Main
 
     private void logErrors()
     {
+        if ( !errors.isEmpty() )
+        {
+            System.err.println( "There were download errors. See " + Options.ERROR_LOG
+                                + " for details." );
+        }
+
         final File errorLog = new File( Options.ERROR_LOG );
         try (PrintWriter writer = new PrintWriter( new FileWriter( errorLog ) ))
         {
@@ -154,7 +160,7 @@ public class Main
         {
             e.printStackTrace();
             System.err.println( "Failed to write download errors to: " + Options.ERROR_LOG
-                + ". See above for more information." );
+                                + ". See above for more information." );
         }
     }
 
@@ -311,17 +317,17 @@ public class Main
                                 ( (AbstractExecutionAwareRequest) request ).reset();
                             }
                         }
-
-                        counter--;
-                        synchronized ( Main.this )
-                        {
-                            Main.this.notifyAll();
-                        }
                     }
                 }
             }
             finally
             {
+                counter--;
+                synchronized ( Main.this )
+                {
+                    Main.this.notifyAll();
+                }
+
                 Thread.currentThread()
                       .setName( name );
             }

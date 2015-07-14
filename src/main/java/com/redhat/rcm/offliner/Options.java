@@ -208,7 +208,7 @@ public class Options
         return settingsXml;
     }
 
-    public void setSettingsXml( File settingsXml )
+    public void setSettingsXml( final File settingsXml )
     {
         this.settingsXml = settingsXml;
     }

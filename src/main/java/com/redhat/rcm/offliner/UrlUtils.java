@@ -92,4 +92,20 @@ public final class UrlUtils
         return new URL( urlBuilder.toString() ).toExternalForm();
     }
 
+    /**
+     * Gets port from the given URL. If no port is specified, then default port is returned.
+     *
+     * @param url the URL
+     * @return port from the given URL or if no port specified, then the default port for the URL protocol
+     */
+    public static int getPort( URL url )
+    {
+        int port = url.getPort();
+        if ( port == -1 )
+        {
+            port = url.getDefaultPort();
+        }
+        return port;
+    }
+
 }

@@ -380,7 +380,7 @@ public class Main
         if ( url != null )
         {
             final URL u = new URL( url );
-            final AuthScope as = new AuthScope( u.getHost(), u.getPort() );
+            final AuthScope as = new AuthScope( u.getHost(), UrlUtils.getPort( u ) );
 
             final String user = opts.getUser();
             if ( user != null )

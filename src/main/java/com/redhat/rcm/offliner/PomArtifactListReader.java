@@ -39,6 +39,7 @@ import org.apache.maven.artifact.repository.MavenArtifactRepository;
 import org.apache.maven.artifact.repository.layout.DefaultRepositoryLayout;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.Plugin;
 import org.apache.maven.model.Repository;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.repository.DefaultMirrorSelector;
@@ -108,6 +109,16 @@ public class PomArtifactListReader
             paths.add( path );
         }
 
+        List<Plugin> plugins = model.getBuild().getPlugins();
+        for ( Plugin dep : plugins )
+        {
+            String prefix = String.format( "%s/%s/%s/%s-%s.", dep.getGroupId().replace( '.', '/' ),
+                                            dep.getArtifactId(), dep.getVersion(),dep.getArtifactId(),
+                                            dep.getVersion() );
+            paths.add( String.format( "%spom", prefix ) );
+            paths.add( String.format( "%sjar", prefix ) );
+        }
+
         List<Repository> repositories = model.getRepositories();
 
         processSettingsXml( repositories );
@@ -151,10 +162,11 @@ public class PomArtifactListReader
     }
 
     /**
-     * Applies mirrors from the settings.xml on the {@code repoUrlMap}.
+     * Applies mirrors from the settings.xml on the {@code repositories}. Read mirrors replace the original repositories
+     * in provided repository list.
      *
      * @param settings settings.xml contents
-     * @param repoUrlMap map of repository URLs; key is repository ID, value is the URL
+     * @param repositories list of repositories read from pom
      */
     private void processMirrors( final Settings settings, final List<Repository> repositories )
     {
@@ -222,13 +234,12 @@ public class PomArtifactListReader
                     {
                         throw new RuntimeException( String.format( "Repository URL \"%s\" could not be parsed.", repository.getUrl() ), ex );
                     }
-                    AuthScope as = new AuthScope( url.getHost(), url.getPort() );
-                    creds.setCredentials( as , credentials );
+                    AuthScope as = new AuthScope( url.getHost(), UrlUtils.getPort( url ) );
+                    creds.setCredentials( as, credentials );
                 }
             }
         }
     }
-
 
     @Override
     public boolean supports( final File file )

@@ -41,6 +41,7 @@
 
   <properties>
     <version.org.apache.maven>3.0.3</version.org.apache.maven>
+    <enforceManagedDeps>false</enforceManagedDeps>
   </properties>
 
   <dependencies>

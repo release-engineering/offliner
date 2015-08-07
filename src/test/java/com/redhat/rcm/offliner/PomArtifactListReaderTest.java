@@ -79,7 +79,7 @@ public class PomArtifactListReaderTest
     @Test
     public void readPathsDependencies() throws Exception
     {
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( null, new BasicCredentialsProvider() );
+        PomArtifactListReader artifactListReader = getDefaultListReader();
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
 
@@ -100,7 +100,7 @@ public class PomArtifactListReaderTest
     @Test
     public void readPathsPomForJar() throws Exception
     {
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( null, new BasicCredentialsProvider() );
+        PomArtifactListReader artifactListReader = getDefaultListReader();
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
 
@@ -114,7 +114,7 @@ public class PomArtifactListReaderTest
     @Ignore
     public void readPathsParent() throws Exception
     {
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( null, new BasicCredentialsProvider() );
+        PomArtifactListReader artifactListReader = getDefaultListReader();
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
 
@@ -128,7 +128,7 @@ public class PomArtifactListReaderTest
     @Ignore
     public void readPathsImportedBoms() throws Exception
     {
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( null, new BasicCredentialsProvider() );
+        PomArtifactListReader artifactListReader = getDefaultListReader();
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
 
@@ -143,7 +143,7 @@ public class PomArtifactListReaderTest
     @Test
     public void readPathsPlugins() throws Exception
     {
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( null, new BasicCredentialsProvider() );
+        PomArtifactListReader artifactListReader = getDefaultListReader();
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
 
@@ -158,7 +158,7 @@ public class PomArtifactListReaderTest
     @Test
     public void readPathsRepositories() throws Exception
     {
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( null, new BasicCredentialsProvider() );
+        PomArtifactListReader artifactListReader = getDefaultListReader();
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
 
@@ -174,6 +174,7 @@ public class PomArtifactListReaderTest
     public void readPathsProcessMirror() throws Exception
     {
         PomArtifactListReader artifactListReader = new PomArtifactListReader( getFile( "settings.xml" ),
+                                                                              Options.DEFAULT_TYPE_MAPPING,
                                                                               new BasicCredentialsProvider() );
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
@@ -190,13 +191,30 @@ public class PomArtifactListReaderTest
     public void readPathsAddRepositoryCredentials() throws Exception
     {
         BasicCredentialsProvider creds = new BasicCredentialsProvider();
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( getFile( "settings.xml" ), creds );
+        PomArtifactListReader artifactListReader = new PomArtifactListReader( getFile( "settings.xml" ),
+                                                                              Options.DEFAULT_TYPE_MAPPING, creds );
 
         // call to invoke processing of settings.xml, but the result is not needed
         artifactListReader.readPaths( getFile( "repo.pom" ) );
 
         Credentials credentials = creds.getCredentials( new AuthScope( "mirror.jboss.org", 80, null, "http" ) );
         assertNotNull( "Credentials for http://mirror.jboss.org/ not loaded", credentials );
+    }
+
+    /**
+     * Checks if type of a dependency is mapped correctly, if its mapping to extension-classifier is defined.
+     */
+    @Test
+    public void readPathsMapType() throws Exception
+    {
+        PomArtifactListReader artifactListReader = getDefaultListReader();
+
+        ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
+
+        List<String> paths = artList.getPaths();
+        checkPath( paths, "org/apache/maven/plugins/maven-dependency-plguin/2.9/maven-dependency-plguin-2.9.pom" );
+        checkPath( paths, "org/apache/maven/plugins/maven-dependency-plguin/2.9/maven-dependency-plguin-2.9.jar" );
+        checkPath( paths, "org/apache/ant/ant/1.8.0/ant-1.8.0-tests.jar" );
     }
 
 
@@ -226,6 +244,11 @@ public class PomArtifactListReaderTest
         {
             assertFalse( "Additional " + subject + " " + needle + " was found in the result", heap.contains( needle ) );
         }
+    }
+
+    private PomArtifactListReader getDefaultListReader()
+    {
+        return new PomArtifactListReader( null, Options.DEFAULT_TYPE_MAPPING, new BasicCredentialsProvider() );
     }
 
 }

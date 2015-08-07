@@ -408,7 +408,7 @@ public class Main
 
         artifactListReaders = new ArrayList<>( 2 );
         artifactListReaders.add( new PlaintextArtifactListReader( baseUrl ) );
-        artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), creds ) );
+        artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), opts.getTypeMapping(), creds ) );
     }
 
 }

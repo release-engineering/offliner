@@ -28,6 +28,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.auth.AuthScope;
@@ -63,11 +65,45 @@ public class PomArtifactListReader
 
     private CredentialsProvider creds;
 
+    private Map<String, TypeMapping> typeMapping;
 
-    public PomArtifactListReader( final File settingsXml, final CredentialsProvider creds )
+
+    public PomArtifactListReader( final File settingsXml, final String typeMapping , final CredentialsProvider creds )
     {
         this.settingsXml = settingsXml;
         this.creds = creds;
+
+        if ( ! StringUtils.isEmpty( typeMapping ) )
+        {
+            String[] mappings = typeMapping.split( ";" );
+            this.typeMapping = new HashMap<>( mappings.length );
+
+            Pattern p = Pattern.compile( "([^=]+)=([^:]+)(?::(.+))?" );
+            for ( String mapping : mappings )
+            {
+                Matcher m = p.matcher( mapping );
+                if ( ! m.matches() )
+                {
+                    throw new IllegalArgumentException( "The type mapping string \"" + typeMapping
+                                                        + "\" has a wrong format." );
+                }
+                String type = m.group( 1 );
+                String extension = m.group( 2 );
+                if ( m.groupCount() == 3 )
+                {
+                    String classifier = m.group( 3 );
+                    this.typeMapping.put( type, new TypeMapping( extension, classifier ) );
+                }
+                else
+                {
+                    this.typeMapping.put( type, new TypeMapping( extension ) );
+                }
+            }
+        }
+        else
+        {
+            this.typeMapping = Collections.emptyMap();
+        }
     }
 
 
@@ -90,20 +126,29 @@ public class PomArtifactListReader
         {
             String dirPath = String.format( "%s/%s/%s", dep.getGroupId().replace( '.', '/' ), dep.getArtifactId(),
                                             dep.getVersion() );
-            if ( !"pom".equals( dep.getType() ))
+            String extension = dep.getType();
+            String classifier = dep.getClassifier();
+            if ( typeMapping.containsKey( extension ) )
+            {
+                TypeMapping tm = typeMapping.get( extension );
+                extension = tm.getExtension();
+                classifier = tm.getClassifier();
+            }
+
+            if ( !"pom".equals( extension ))
             {
                 paths.add( String.format( "%s/%s-%s.pom", dirPath, dep.getArtifactId(), dep.getVersion() ) );
             }
 
             String path;
-            if ( StringUtils.isEmpty( dep.getClassifier() ) )
+            if ( StringUtils.isEmpty( classifier ) )
             {
-                path = String.format( "%s/%s-%s.%s", dirPath, dep.getArtifactId(), dep.getVersion(), dep.getType() );
+                path = String.format( "%s/%s-%s.%s", dirPath, dep.getArtifactId(), dep.getVersion(), extension );
             }
             else
             {
                 path = String.format( "%s/%s-%s-%s.%s", dirPath, dep.getArtifactId(), dep.getVersion(),
-                                      dep.getClassifier(), dep.getType() );
+                                      classifier, extension );
             }
 
             paths.add( path );
@@ -246,6 +291,39 @@ public class PomArtifactListReader
     {
         String filename = file.getName();
         return "pom.xml".equals( filename ) || filename.endsWith( ".pom" );
+    }
+
+
+    private static class TypeMapping
+    {
+
+        private final String extension;
+
+        private final String classifier;
+
+
+        public TypeMapping( final String extension, final String classifer )
+        {
+            this.extension = extension;
+            this.classifier = classifer;
+        }
+
+        public TypeMapping( final String extension )
+        {
+            this( extension, null );
+        }
+
+
+        public String getExtension()
+        {
+            return extension;
+        }
+
+        public String getClassifier()
+        {
+            return classifier;
+        }
+
     }
 
 }

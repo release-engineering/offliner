@@ -27,8 +27,6 @@ import org.kohsuke.args4j.ParserProperties;
 public class Options
 {
 
-    public static final String DEFAULT_TYPE_MAPPING = "test-jar=jar:tests;ejb=jar;ejb-client=jar:client;maven-plugin=jar;java-source=jar:sources;javadoc=jar:javadoc";
-
     private static final int DEFAULT_CONNECTIONS = 200;
 
     public static final String DEFAULT_REPO_URL = "https://maven.repository.redhat.com/ga/all/";
@@ -64,10 +62,10 @@ public class Options
     @Option( name = "-s", aliases = { "--mavensettings" }, metaVar = "FILE", usage = "Path to settings.xml used when a pom is used as the source file" )
     private File settingsXml;
 
-    @Option( name = "-s", aliases = { "--maventypemapping" }, metaVar = "MAPPING", usage = "List of mapping where key is "
-        + "type and value is file extension with or without classifier separated by colon. List elements are separated by "
-        + "semicolons." )
-    private String typeMapping = DEFAULT_TYPE_MAPPING;
+    @Option( name = "-s", aliases = { "--maventypemapping" }, metaVar = "MAPPING", usage = "File containing mapping properties "
+        + "where key is type and value is file extension with or without classifier each mapping on a single line. List elements"
+        + " are separated by semicolons." )
+    private String typeMapping;
 
     @Option( name = "-h", aliases = { "--help" }, help = true, usage = "Print this help screen and exit" )
     private boolean help;

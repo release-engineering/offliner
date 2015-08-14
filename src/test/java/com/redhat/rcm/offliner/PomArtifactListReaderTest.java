@@ -10,12 +10,12 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.codehaus.plexus.util.FileUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -173,8 +173,7 @@ public class PomArtifactListReaderTest
     @Test
     public void readPathsProcessMirror() throws Exception
     {
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( getFile( "settings.xml" ),
-                                                                              Options.DEFAULT_TYPE_MAPPING,
+        PomArtifactListReader artifactListReader = new PomArtifactListReader( getFile( "settings.xml" ), null,
                                                                               new BasicCredentialsProvider() );
 
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
@@ -191,8 +190,7 @@ public class PomArtifactListReaderTest
     public void readPathsAddRepositoryCredentials() throws Exception
     {
         BasicCredentialsProvider creds = new BasicCredentialsProvider();
-        PomArtifactListReader artifactListReader = new PomArtifactListReader( getFile( "settings.xml" ),
-                                                                              Options.DEFAULT_TYPE_MAPPING, creds );
+        PomArtifactListReader artifactListReader = new PomArtifactListReader( getFile( "settings.xml" ), null, creds );
 
         // call to invoke processing of settings.xml, but the result is not needed
         artifactListReader.readPaths( getFile( "repo.pom" ) );
@@ -202,7 +200,8 @@ public class PomArtifactListReaderTest
     }
 
     /**
-     * Checks if type of a dependency is mapped correctly, if its mapping to extension-classifier is defined.
+     * Checks if type of a dependency is mapped correctly, if its mapping to extension-classifier is defined in the
+     * default properties file.
      */
     @Test
     public void readPathsMapType() throws Exception
@@ -212,8 +211,61 @@ public class PomArtifactListReaderTest
         ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
 
         List<String> paths = artList.getPaths();
-        checkPath( paths, "org/apache/maven/plugins/maven-dependency-plguin/2.9/maven-dependency-plguin-2.9.pom" );
-        checkPath( paths, "org/apache/maven/plugins/maven-dependency-plguin/2.9/maven-dependency-plguin-2.9.jar" );
+        checkPath( paths, "org/apache/maven/plugins/maven-assembly-plugin/2.5.5/maven-assembly-plugin-2.5.5.pom" );
+        checkPath( paths, "org/apache/maven/plugins/maven-assembly-plugin/2.5.5/maven-assembly-plugin-2.5.5.jar" );
+        checkPath( paths, "org/apache/ant/ant/1.8.0/ant-1.8.0-tests.jar" );
+    }
+
+    /**
+     * Checks if type of a dependency is mapped correctly, if its mapping to extension-classifier is defined by an
+     * external properties file. First it runs with an empty mapping file to ensure the mapping is not applied. Then the
+     * test simply stores the default properties contents into a temporary file and runs checks if mapping was applied.
+     */
+    @Test
+    public void readPathsMapTypeWithExternalMapping() throws Exception
+    {
+        // create empty mapping properties file
+        File mappingFile = getFile( "test.properties" );
+        try ( OutputStream os = new FileOutputStream( mappingFile ) )
+        {
+            // nothing to do, just create an empty file
+        }
+
+        // create reader with the empty mapping
+        PomArtifactListReader artifactListReader = new PomArtifactListReader( null, mappingFile.getPath(),
+                                                                              new BasicCredentialsProvider() );
+
+        ArtifactList artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
+
+        List<String> paths = artList.getPaths();
+        checkPath( paths, "org/apache/maven/plugins/maven-assembly-plugin/2.5.5/maven-assembly-plugin-2.5.5.pom" );
+        checkPath( paths, "org/apache/maven/plugins/maven-assembly-plugin/2.5.5/maven-assembly-plugin-2.5.5.jar", false );
+        checkPath( paths, "org/apache/maven/plugins/maven-assembly-plugin/2.5.5/maven-assembly-plugin-2.5.5.maven-plugin" );
+        checkPath( paths, "org/apache/ant/ant/1.8.0/ant-1.8.0-tests.jar", false );
+        checkPath( paths, "org/apache/ant/ant/1.8.0/ant-1.8.0.test-jar" );
+
+        // read the contents of the internal properties file
+        List<String> contents;
+        try ( InputStream is = getClass().getClassLoader().getResourceAsStream( PomArtifactListReader.DEFAULT_TYPE_MAPPING_RES ) )
+        {
+            contents = IOUtils.readLines( is );
+        }
+
+        // write the mapping into the external file
+        try ( OutputStream os = new FileOutputStream( mappingFile ) )
+        {
+            IOUtils.writeLines( contents, null, os );
+        }
+
+        // create reader with the copied mapping
+        artifactListReader = new PomArtifactListReader( null, mappingFile.getPath(),
+                                                        new BasicCredentialsProvider() );
+
+        artList = artifactListReader.readPaths( getFile( "repo.pom" ) );
+
+        paths = artList.getPaths();
+        checkPath( paths, "org/apache/maven/plugins/maven-assembly-plugin/2.5.5/maven-assembly-plugin-2.5.5.pom" );
+        checkPath( paths, "org/apache/maven/plugins/maven-assembly-plugin/2.5.5/maven-assembly-plugin-2.5.5.jar" );
         checkPath( paths, "org/apache/ant/ant/1.8.0/ant-1.8.0-tests.jar" );
     }
 
@@ -248,7 +300,7 @@ public class PomArtifactListReaderTest
 
     private PomArtifactListReader getDefaultListReader()
     {
-        return new PomArtifactListReader( null, Options.DEFAULT_TYPE_MAPPING, new BasicCredentialsProvider() );
+        return new PomArtifactListReader( null, null, new BasicCredentialsProvider() );
     }
 
 }

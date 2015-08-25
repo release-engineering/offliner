@@ -16,8 +16,10 @@
 package com.redhat.rcm.offliner;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -27,6 +29,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,6 +64,8 @@ public class PomArtifactListReader
     implements ArtifactListReader
 {
 
+    static final String DEFAULT_TYPE_MAPPING_RES = "type-mapping.properties";
+
     private File settingsXml;
 
     private CredentialsProvider creds;
@@ -68,41 +73,59 @@ public class PomArtifactListReader
     private Map<String, TypeMapping> typeMapping;
 
 
-    public PomArtifactListReader( final File settingsXml, final String typeMapping , final CredentialsProvider creds )
+    public PomArtifactListReader( final File settingsXml, final String typeMappingFile , final CredentialsProvider creds )
     {
         this.settingsXml = settingsXml;
         this.creds = creds;
 
-        if ( ! StringUtils.isEmpty( typeMapping ) )
+        Properties props = new Properties();
+        if ( StringUtils.isEmpty( typeMappingFile ) )
         {
-            String[] mappings = typeMapping.split( ";" );
-            this.typeMapping = new HashMap<>( mappings.length );
-
-            Pattern p = Pattern.compile( "([^=]+)=([^:]+)(?::(.+))?" );
-            for ( String mapping : mappings )
+            try ( InputStream mappingStream = getClass().getClassLoader().getResourceAsStream( DEFAULT_TYPE_MAPPING_RES ) )
             {
-                Matcher m = p.matcher( mapping );
-                if ( ! m.matches() )
-                {
-                    throw new IllegalArgumentException( "The type mapping string \"" + typeMapping
-                                                        + "\" has a wrong format." );
-                }
-                String type = m.group( 1 );
-                String extension = m.group( 2 );
-                if ( m.groupCount() == 3 )
-                {
-                    String classifier = m.group( 3 );
-                    this.typeMapping.put( type, new TypeMapping( extension, classifier ) );
-                }
-                else
-                {
-                    this.typeMapping.put( type, new TypeMapping( extension ) );
-                }
+                props.load( mappingStream );
+            }
+            catch ( IOException ex )
+            {
+                throw new IllegalStateException( "Failed to load Maven type mapping from default properties", ex );
             }
         }
         else
         {
-            this.typeMapping = Collections.emptyMap();
+            try ( InputStream mappingStream = new FileInputStream( typeMappingFile ) )
+            {
+                props.load( mappingStream );
+            }
+            catch ( IOException ex )
+            {
+                throw new IllegalStateException( "Failed to load Maven type mapping provided properties file "
+                                                 + typeMappingFile, ex );
+            }
+        }
+        this.typeMapping = new HashMap<>( props.size() );
+
+        Pattern p = Pattern.compile( "([^:]+)(?::(.+))?" );
+        for ( Map.Entry<Object, Object> entry : props.entrySet() )
+        {
+            String type = (String) entry.getKey();
+
+            String value = (String) entry.getValue();
+            Matcher m = p.matcher( value );
+            if ( ! m.matches() )
+            {
+                throw new IllegalArgumentException( "The type mapping string \"" + typeMappingFile
+                                                    + "\" has a wrong format." );
+            }
+            String extension = m.group( 1 );
+            if ( m.groupCount() == 2 )
+            {
+                String classifier = m.group( 2 );
+                this.typeMapping.put( type, new TypeMapping( extension, classifier ) );
+            }
+            else
+            {
+                this.typeMapping.put( type, new TypeMapping( extension ) );
+            }
         }
     }
 

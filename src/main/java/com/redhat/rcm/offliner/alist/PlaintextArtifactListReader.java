@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.redhat.rcm.offliner;
+package com.redhat.rcm.offliner.alist;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import com.redhat.rcm.offliner.model.ArtifactList;
 import org.apache.commons.io.FileUtils;
 
 /**
@@ -32,19 +33,11 @@ import org.apache.commons.io.FileUtils;
 public class PlaintextArtifactListReader implements ArtifactListReader
 {
 
-    private String repoUrl;
-
-    public PlaintextArtifactListReader( final String repoUrl )
-    {
-        this.repoUrl = repoUrl;
-    }
-
     @Override
     public ArtifactList readPaths( final File file ) throws IOException
     {
         List<String> paths = FileUtils.readLines( file );
-        List<String> repositories = Collections.singletonList( repoUrl );
-        ArtifactList result = new ArtifactList( paths, repositories );
+        ArtifactList result = new ArtifactList( paths, Collections.emptyList() );
         return result;
     }
 

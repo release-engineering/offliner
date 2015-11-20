@@ -31,12 +31,14 @@ public class Options
 
     public static final String DEFAULT_REPO_URL = "https://maven.repository.redhat.com/ga/all/";
 
+    public static final String CENTRAL_REPO_URL = "http://repo.maven.apache.org/maven2/";
+
     public static final String ERROR_LOG = "errors.log";
 
     private static final File DEFAULT_DOWNLOADS = new File( "repository" );
 
     @Option( name = "-r", aliases = { "--url", "--repo-url", "--base-url" }, metaVar = "REPO-URL", usage = "Alternative URL for resolving repository artifacts (eg. repository manager URL for proxy of maven.repository.redhat.com)" )
-    private String baseUrl;
+    private List<String> baseUrls;
 
     @Option( name = "-u", aliases = { "--user", "--repo-user" }, metaVar = "USER", usage = "Authentication user, if using a repository manager URL" )
     private String user;
@@ -62,7 +64,7 @@ public class Options
     @Option( name = "-s", aliases = { "--mavensettings" }, metaVar = "FILE", usage = "Path to settings.xml used when a pom is used as the source file" )
     private File settingsXml;
 
-    @Option( name = "-s", aliases = { "--maventypemapping" }, metaVar = "MAPPING", usage = "File containing mapping properties "
+    @Option( name = "-m", aliases = { "--maventypemapping" }, metaVar = "MAPPING", usage = "File containing mapping properties "
         + "where key is type and value is file extension with or without classifier each mapping on a single line. List elements"
         + " are separated by semicolons." )
     private String typeMapping;
@@ -108,14 +110,14 @@ public class Options
         System.err.println();
     }
 
-    public String getBaseUrl()
+    public List<String> getBaseUrls()
     {
-        return baseUrl;
+        return baseUrls;
     }
 
-    public void setBaseUrl( final String baseUrl )
+    public void setBaseUrls( final List<String> baseUrls )
     {
-        this.baseUrl = baseUrl;
+        this.baseUrls = baseUrls;
     }
 
     public boolean isHelp()

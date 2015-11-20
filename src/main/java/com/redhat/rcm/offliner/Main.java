@@ -23,15 +23,28 @@ import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import com.redhat.rcm.offliner.alist.ArtifactListReader;
+import com.redhat.rcm.offliner.alist.FoloReportArtifactListReader;
+import com.redhat.rcm.offliner.alist.PlaintextArtifactListReader;
+import com.redhat.rcm.offliner.alist.PomArtifactListReader;
+import com.redhat.rcm.offliner.model.ArtifactList;
+import com.redhat.rcm.offliner.model.DownloadResult;
+import com.redhat.rcm.offliner.util.UrlUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -89,14 +102,17 @@ public class Main
 
     private HttpClientContext contextPrototype;
 
-    private ExecutorService executor;
+    private ExecutorService executorService;
 
-    private volatile int counter = 0;
+    private ExecutorCompletionService<DownloadResult> executor;
+
+    private int downloaded = 0;
 
     private ConcurrentHashMap<String, Throwable> errors;
 
     private List<ArtifactListReader> artifactListReaders;
 
+    private List<String> baseUrls;
 
     public Main( final Options opts )
         throws MalformedURLException
@@ -117,19 +133,53 @@ public class Main
 
         try
         {
+            Set<String> seen = new HashSet<>();
+            int total = 0;
             for ( final String file : files )
             {
-                download( file );
+                total += download( file, seen );
+            }
+
+            for ( int i = 0; i < total; i++ )
+            {
+                System.out.printf("Waiting for %d downloads\n", (total - i));
+
+                Future<DownloadResult> task = executor.take();
+                DownloadResult result = task.get();
+                if ( result == null )
+                {
+                    System.err.println( "BUG: DownloadResult returned from execution should NEVER be null!" );
+                }
+                else if ( result.isSuccess() )
+                {
+                    downloaded++;
+                    System.out.printf( "<<<SUCCESS: %s\n", result.getPath() );
+                }
+                else
+                {
+                    errors.put( result.getPath(), result.getError() );
+                    System.out.printf( "<<<FAIL: %s\n", result.getPath() );
+                }
             }
 
             logErrors();
 
-            executor.shutdown();
-            executor.awaitTermination( 30, TimeUnit.SECONDS );
+            executorService.shutdown();
+            executorService.awaitTermination( 30, TimeUnit.SECONDS );
         }
         catch ( final InterruptedException e )
         {
             System.err.println( "Interrupted waiting for download executor to shutdown." );
+        }
+        catch ( final ExecutionException e )
+        {
+            // TODO: Handle suppressed exceptions
+            System.err.println( "Download execution manager failed." );
+            e.printStackTrace();
+        }
+        catch ( IOException | OfflinerException e )
+        {
+            e.printStackTrace();
         }
         finally
         {
@@ -139,83 +189,88 @@ public class Main
 
     private void logErrors()
     {
+        System.out.printf( "%d downloads succeeded.\n%d downloads failed.\n\n", downloaded, errors.size() );
+
         if ( !errors.isEmpty() )
         {
-            System.err.println( "There were download errors. See " + Options.ERROR_LOG
-                                + " for details." );
-        }
+            System.err.printf( "See %s for details.", Options.ERROR_LOG );
 
-        final File errorLog = new File( Options.ERROR_LOG );
-        try (PrintWriter writer = new PrintWriter( new FileWriter( errorLog ) ))
-        {
-            for ( final Map.Entry<String, Throwable> entry : errors.entrySet() )
+            final File errorLog = new File( Options.ERROR_LOG );
+            try (PrintWriter writer = new PrintWriter( new FileWriter( errorLog ) ))
             {
-                writer.printf( "Path: %s\n%s\n", entry.getKey(), SEP );
-                entry.getValue()
-                     .printStackTrace( writer );
-                writer.printf( "\n%s\n\n", SEP );
+                for ( final Map.Entry<String, Throwable> entry : errors.entrySet() )
+                {
+                    writer.printf( "Path: %s\n%s\n", entry.getKey(), SEP );
+                    entry.getValue().printStackTrace( writer );
+                    writer.printf( "\n%s\n\n", SEP );
+                }
             }
-        }
-        catch ( final IOException e )
-        {
-            e.printStackTrace();
-            System.err.println( "Failed to write download errors to: " + Options.ERROR_LOG
-                                + ". See above for more information." );
+            catch ( final IOException e )
+            {
+                e.printStackTrace();
+                System.err.println(
+                        "Failed to write download errors to: " + Options.ERROR_LOG + ". See above for more information." );
+            }
         }
     }
 
-    private void download( final String filepath )
+    private int download( final String filepath, Set<String> seen )
+            throws IOException, OfflinerException
     {
         System.out.println( "Downloading artifacts from: " + filepath );
+
+        final List<String> paths;
+        List<String> baseUrls = this.baseUrls;
         try
         {
             File file = new File( filepath );
             ArtifactListReader reader = getArtifactListReader( file );
             ArtifactList artifactList = reader.readPaths( file );
-            final List<String> paths = artifactList.getPaths();
-            final List<String> baseUrls;
-            if ( opts.getBaseUrl() == null )
+
+            if ( baseUrls == null || baseUrls.isEmpty() )
             {
                 baseUrls = artifactList.getRepositoryUrls();
+                if ( baseUrls == null )
+                {
+                    baseUrls = new ArrayList<>();
+                }
+
                 if ( baseUrls.isEmpty() )
                 {
                     baseUrls.add( Options.DEFAULT_REPO_URL );
+                    baseUrls.add( Options.CENTRAL_REPO_URL );
                 }
             }
-            else
-            {
-                baseUrls = Collections.singletonList( opts.getBaseUrl() );
-            }
-            for ( final String path : paths )
-            {
-                executor.execute( newDownloader( baseUrls, path ) );
-            }
+
+            paths = artifactList.getPaths();
         }
         catch ( final IOException e )
         {
-            e.printStackTrace();
             System.err.printf( "\n\nFailed to read paths from file: %s. See above for more information.\n", filepath );
+            throw e;
         }
 
-        while ( counter > 0 )
+        if ( paths == null || paths.isEmpty() )
         {
-            System.out.println( "Waiting for " + counter + " downloads to complete." );
-            synchronized ( this )
+            System.err.println( "Nothing to download!" );
+            return 0;
+        }
+
+        int count = 0;
+        for ( final String path : paths )
+        {
+            if ( !seen.contains( path ) )
             {
-                try
-                {
-                    wait( 1000 );
-                }
-                catch ( final InterruptedException e )
-                {
-                    System.err.println( "Interrupted waiting for downloads to complete for: " + filepath );
-                    break;
-                }
+                executor.submit( newDownloader( baseUrls, path ) );
+                count++;
             }
         }
+
+        return count;
     }
 
     private ArtifactListReader getArtifactListReader( File file )
+            throws OfflinerException
     {
         for ( ArtifactListReader reader : artifactListReaders )
         {
@@ -224,10 +279,10 @@ public class Main
                 return reader;
             }
         }
-        throw new RuntimeException( "No reader supports file " + file.getPath() + '.' );
+        throw new OfflinerException( "No reader supports file %s.", file.getPath() );
     }
 
-    private Runnable newDownloader( final List<String> baseUrls, final String path )
+    private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path )
     {
         return ( ) -> {
             final String name = Thread.currentThread()
@@ -236,8 +291,6 @@ public class Main
                   .setName( "download--" + path );
             try
             {
-                counter++;
-
                 final File target = new File( opts.getDownloads(), path );
                 final File dir = target.getParentFile();
                 dir.mkdirs();
@@ -256,8 +309,7 @@ public class Main
                     }
                     catch ( final Exception e )
                     {
-                        errors.put( path, e );
-                        return;
+                        return DownloadResult.error( path, e );
                     }
 
                     System.out.println( ">>>Downloading: " + url );
@@ -278,33 +330,41 @@ public class Main
                             }
                             part.renameTo( target );
 
-                            System.out.println( "<<<Downloaded: " + url );
-
-                            break;
+                            return DownloadResult.success( baseUrl, path );
                         }
                         else if ( statusCode == 404 )
                         {
                             System.out.println( "<<<Not Found: " + url );
                             if ( reposRemaining == 0 )
                             {
-                                throw new IOException( "Error downloading path: " + path + ". The artifact was not "
-                                                + "found in any of the provided repositories." );
+                                return DownloadResult.error( path, new IOException(
+                                        "Error downloading path: " + path + ". The artifact was not "
+                                                + "found in any of the provided repositories." ) );
                             }
                         }
                         else
                         {
                             final String serverError = IOUtils.toString( response.getEntity()
                                                                          .getContent() );
-                            throw new IOException( "Error downloading path: " + path + ".\n" + SEP + "\nServer status: "
-                                            + response.getStatusLine() + "\nServer response was:\n" + serverError + "\n"
-                                            + SEP + "\n\nLocal stack trace:" );
+
+                            String message = String.format(
+                                    "Error downloading path: %s.\n%s\nServer status: %s\nServer response was:\n%s\n%s",
+                                    path, SEP, response.getStatusLine(), serverError, SEP );
+
+                            if ( reposRemaining == 0 )
+                            {
+                                return DownloadResult.error( path, new IOException( message ) );
+                            }
+                            else
+                            {
+                                System.out.println( "<<<" + message );
+                            }
                         }
 
                     }
                     catch ( final IOException e )
                     {
-                        System.out.println( "FAIL: " + url );
-                        errors.put( path, e );
+                        return DownloadResult.error( path, new IOException("URL: " + url + " failed.", e ) );
                     }
                     finally
                     {
@@ -322,27 +382,27 @@ public class Main
             }
             finally
             {
-                counter--;
-                synchronized ( Main.this )
-                {
-                    Main.this.notifyAll();
-                }
-
                 Thread.currentThread()
                       .setName( name );
             }
+
+            return null;
         };
     }
 
     private void init()
         throws MalformedURLException
     {
-        executor = Executors.newCachedThreadPool( ( final Runnable r ) -> {
+        int cpus = Runtime.getRuntime().availableProcessors();
+        executorService = Executors.newFixedThreadPool( cpus * 2, ( final Runnable r ) -> {
+//        executorService = Executors.newCachedThreadPool( ( final Runnable r ) -> {
             final Thread t = new Thread( r );
             t.setDaemon( true );
 
             return t;
         } );
+
+        executor = new ExecutorCompletionService<>( executorService );
 
         errors = new ConcurrentHashMap<String, Throwable>();
 
@@ -376,38 +436,48 @@ public class Main
         contextPrototype = HttpClientContext.create();
         contextPrototype.setCredentialsProvider( creds );
 
-        final String url = opts.getBaseUrl();
-        if ( url != null )
+        baseUrls = opts.getBaseUrls();
+        if ( baseUrls == null )
         {
-            final URL u = new URL( url );
-            final AuthScope as = new AuthScope( u.getHost(), UrlUtils.getPort( u ) );
+            baseUrls = new ArrayList<>();
+        }
 
-            final String user = opts.getUser();
-            if ( user != null )
+        if ( baseUrls.isEmpty() )
+        {
+            baseUrls.add( Options.DEFAULT_REPO_URL );
+            baseUrls.add( Options.CENTRAL_REPO_URL );
+        }
+
+        System.out.println( "Planning download from:\n  " + StringUtils.join( baseUrls, "\n  " ) );
+
+        for ( String baseUrl : baseUrls )
+        {
+            if ( baseUrl != null )
             {
-                creds.setCredentials( as, new UsernamePasswordCredentials( user, opts.getPassword() ) );
+                final String user = opts.getUser();
+                if ( user != null )
+                {
+                    final URL u = new URL( baseUrl );
+                    final AuthScope as = new AuthScope( u.getHost(), UrlUtils.getPort( u ) );
+
+                    creds.setCredentials( as, new UsernamePasswordCredentials( user, opts.getPassword() ) );
+                }
+            }
+
+            if ( proxy != null )
+            {
+                final String proxyUser = opts.getProxyUser();
+                if ( proxyUser != null )
+                {
+                    creds.setCredentials( new AuthScope( proxyHost, proxyPort ),
+                                          new UsernamePasswordCredentials( proxyUser, opts.getProxyPassword() ) );
+                }
             }
         }
 
-        if ( proxy != null )
-        {
-            final String proxyUser = opts.getProxyUser();
-            if ( proxyUser != null )
-            {
-                creds.setCredentials( new AuthScope( proxyHost, proxyPort ),
-                                      new UsernamePasswordCredentials( proxyUser, opts.getProxyPassword() ) );
-            }
-
-        }
-
-        String baseUrl = opts.getBaseUrl();
-        if ( baseUrl == null )
-        {
-            baseUrl = Options.DEFAULT_REPO_URL;
-        }
-
-        artifactListReaders = new ArrayList<>( 2 );
-        artifactListReaders.add( new PlaintextArtifactListReader( baseUrl ) );
+        artifactListReaders = new ArrayList<>( 3 );
+        artifactListReaders.add( new FoloReportArtifactListReader() );
+        artifactListReaders.add( new PlaintextArtifactListReader() );
         artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), opts.getTypeMapping(), creds ) );
     }
 

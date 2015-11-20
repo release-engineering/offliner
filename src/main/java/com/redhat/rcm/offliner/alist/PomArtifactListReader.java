@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.redhat.rcm.offliner;
+package com.redhat.rcm.offliner.alist;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,6 +34,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.redhat.rcm.offliner.OfflinerException;
+import com.redhat.rcm.offliner.model.ArtifactList;
+import com.redhat.rcm.offliner.util.UrlUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
@@ -64,7 +67,7 @@ public class PomArtifactListReader
     implements ArtifactListReader
 {
 
-    static final String DEFAULT_TYPE_MAPPING_RES = "type-mapping.properties";
+    public static final String DEFAULT_TYPE_MAPPING_RES = "type-mapping.properties";
 
     private File settingsXml;
 
@@ -132,7 +135,7 @@ public class PomArtifactListReader
 
     @Override
     public ArtifactList readPaths( final File file )
-        throws IOException
+            throws IOException, OfflinerException
     {
         Model model;
         try (Reader reader = new FileReader( file ))
@@ -141,7 +144,8 @@ public class PomArtifactListReader
         }
         catch ( XmlPullParserException ex )
         {
-            throw new RuntimeException( "Failed to read the source pom file due to a wrong file contents.", ex);
+            throw new OfflinerException( "Failed to parse the source pom: %s. Invalid XML: %s", ex, file,
+                                         ex.getMessage() );
         }
 
         Set<String> paths = new LinkedHashSet<>();
@@ -177,28 +181,34 @@ public class PomArtifactListReader
             paths.add( path );
         }
 
-        List<Plugin> plugins = model.getBuild().getPlugins();
-        for ( Plugin dep : plugins )
+        if ( model.getBuild() != null )
         {
-            String prefix = String.format( "%s/%s/%s/%s-%s.", dep.getGroupId().replace( '.', '/' ),
-                                            dep.getArtifactId(), dep.getVersion(),dep.getArtifactId(),
-                                            dep.getVersion() );
-            paths.add( String.format( "%spom", prefix ) );
-            paths.add( String.format( "%sjar", prefix ) );
+            List<Plugin> plugins = model.getBuild().getPlugins();
+            for ( Plugin dep : plugins )
+            {
+                String prefix = String.format( "%s/%s/%s/%s-%s.", dep.getGroupId().replace( '.', '/' ),
+                                               dep.getArtifactId(), dep.getVersion(),dep.getArtifactId(),
+                                               dep.getVersion() );
+                paths.add( String.format( "%spom", prefix ) );
+                paths.add( String.format( "%sjar", prefix ) );
+            }
         }
 
+        List<String> repoUrls = new ArrayList<>();
+
         List<Repository> repositories = model.getRepositories();
-
-        processSettingsXml( repositories );
-
-        List<String> repoUrls = new ArrayList<>( repositories.size() );
-        for ( Repository repository : repositories )
+        if ( repositories != null )
         {
-            repoUrls.add( repository.getUrl() );
+            processSettingsXml( repositories );
+
+            for ( Repository repository : repositories )
+            {
+                repoUrls.add( repository.getUrl() );
+            }
+
         }
 
         ArtifactList result = new ArtifactList( new ArrayList<String>( paths ), repoUrls );
-
         return result;
     }
 
@@ -210,7 +220,7 @@ public class PomArtifactListReader
      * @throws IOException in case the settings.xml file cannot be found or read
      */
     private void processSettingsXml( List<Repository> repositories )
-        throws IOException
+            throws IOException, OfflinerException
     {
         if ( settingsXml != null )
         {
@@ -221,7 +231,7 @@ public class PomArtifactListReader
             }
             catch ( XmlPullParserException ex )
             {
-                throw new RuntimeException( "Failed to read the source pom file due to a wrong file contents.", ex);
+                throw new OfflinerException( "Failed to parse: %s. Invalid XML: %s", ex, settingsXml, ex.getMessage() );
             }
 
             processMirrors( settings, repositories );
@@ -269,6 +279,7 @@ public class PomArtifactListReader
      * @param repositories the repository list
      */
     private void processCredentials( final Settings settings, final List<Repository> repositories )
+            throws OfflinerException
     {
         Map<String, Repository> repoMap = new HashMap<>();
         for ( Repository repository : repositories )
@@ -300,7 +311,7 @@ public class PomArtifactListReader
                     }
                     catch ( MalformedURLException ex )
                     {
-                        throw new RuntimeException( String.format( "Repository URL \"%s\" could not be parsed.", repository.getUrl() ), ex );
+                        throw new OfflinerException( "Repository URL \"%s\" could not be parsed.", ex, repository.getUrl() );
                     }
                     AuthScope as = new AuthScope( url.getHost(), UrlUtils.getPort( url ) );
                     creds.setCredentials( as, credentials );

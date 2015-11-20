@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.redhat.rcm.offliner;
+package com.redhat.rcm.offliner.alist;
+
+import com.redhat.rcm.offliner.OfflinerException;
+import com.redhat.rcm.offliner.model.ArtifactList;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,7 +33,8 @@ public interface ArtifactListReader
      * @param file source file
      * @return artifact list containing list of downloadable files along with list of repositories
      */
-    ArtifactList readPaths( File file ) throws IOException;
+    ArtifactList readPaths( File file )
+            throws IOException, OfflinerException;
 
     /**
      * CHecks if the given file is supported by this paths reader. The check is performed based on the file contents

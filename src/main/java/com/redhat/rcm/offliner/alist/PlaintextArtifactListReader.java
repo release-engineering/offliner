@@ -46,7 +46,7 @@ public class PlaintextArtifactListReader implements ArtifactListReader
     {
         String filename = file.getName();
         // TODO think of a better way how to check if the file is supported by this reader
-        return !filename.endsWith( ".xml" ) && !filename.endsWith( ".pom" );
+        return !filename.endsWith(".json") && !filename.endsWith( ".xml" ) && !filename.endsWith( ".pom" );
     }
 
 }

@@ -122,13 +122,13 @@ public class Main
     }
 
 
-    private void run()
+    public Main run()
     {
         final List<String> files = opts.getLocations();
         if ( files == null || files.isEmpty() )
         {
             System.out.println( "Nothing to do!" );
-            return;
+            return this;
         }
 
         try
@@ -185,6 +185,8 @@ public class Main
         {
             IOUtils.closeQuietly( client );
         }
+
+        return this;
     }
 
     private void logErrors()
@@ -481,4 +483,18 @@ public class Main
         artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), opts.getTypeMapping(), creds ) );
     }
 
+    public int getDownloaded()
+    {
+        return downloaded;
+    }
+
+    public ConcurrentHashMap<String, Throwable> getErrors()
+    {
+        return errors;
+    }
+
+    public List<String> getBaseUrls()
+    {
+        return baseUrls;
+    }
 }

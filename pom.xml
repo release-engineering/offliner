@@ -45,6 +45,10 @@
 
     <enforceBestPractices>false</enforceBestPractices>
     <enforceStandards>false</enforceStandards>
+
+    <testTimeout>300</testTimeout>
+    <test-forkCount>4</test-forkCount>
+    <test-redirectOutput>true</test-redirectOutput>
   </properties>
 
   <dependencies>
@@ -96,6 +100,12 @@
     </dependency>
 
     <dependency>
+      <groupId>org.commonjava.util</groupId>
+      <artifactId>http-testserver</artifactId>
+      <version>1.1</version>
+    </dependency>
+
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.12</version>
@@ -110,30 +120,88 @@
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.19.1</version>
+          <configuration>
+            <excludes>
+              <exclude>**/ftest/**/*Test.java</exclude>
+              <exclude>**/ftest/*Test.java</exclude>
+              <exclude>**/fixture/*</exclude>
+            </excludes>
+          </configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>2.19.1</version>
+          <executions>
+            <execution>
+              <id>integration-test</id>
+              <goals>
+                <goal>integration-test</goal>
+                <goal>verify</goal>
+              </goals>
+              <configuration>
+                <includes>
+                  <include>**/ftest/*Test.java</include>
+                  <include>**/ftest/**/*Test.java</include>
+                </includes>
+                <excludes>
+                  <exclude>**/fixture/*</exclude>
+                </excludes>
+                <systemPropertyVariables>
+                  <testTimeout>${testTimeout}</testTimeout>
+                </systemPropertyVariables>
+                <forkCount>${test-forkCount}</forkCount>
+                <reuseForks>false</reuseForks>
+                <redirectTestOutputToFile>${test-redirectOutput}</redirectTestOutputToFile>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>jar-with-deps</id>
+              <goals>
+                <goal>single</goal>
+              </goals>
+              <phase>package</phase>
+              <configuration>
+                <descriptorRefs>
+                  <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+                <appendAssemblyId>false</appendAssemblyId>
+                <archive>
+                  <manifest>
+                    <mainClass>com.redhat.rcm.offliner.Main</mainClass>
+                  </manifest>
+                </archive>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>jar-with-deps</id>
-            <goals>
-              <goal>single</goal>
-            </goals>
-            <phase>package</phase>
-            <configuration>
-              <descriptorRefs>
-                <descriptorRef>jar-with-dependencies</descriptorRef>
-              </descriptorRefs>
-              <appendAssemblyId>false</appendAssemblyId>
-              <archive>
-                <manifest>
-                  <mainClass>com.redhat.rcm.offliner.Main</mainClass>
-                </manifest>
-              </archive>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>run-its</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-failsafe-plugin</artifactId>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

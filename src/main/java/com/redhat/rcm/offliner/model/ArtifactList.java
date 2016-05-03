@@ -16,6 +16,7 @@
 package com.redhat.rcm.offliner.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -36,17 +37,23 @@ public class ArtifactList
      */
     private List<String> paths;
 
+    /**
+     * HashMap of artifacts relative paths to relevant checksums
+     */
+    private HashMap<String, String> checksums;
 
     public ArtifactList()
     {
         this.paths = new ArrayList<>();
         this.repositoryUrls = new ArrayList<>();
+        this.checksums = new HashMap<String, String>();
     }
 
-    public ArtifactList( List<String> paths, List<String> repositories )
+    public ArtifactList( List<String> paths, List<String> repositories, HashMap<String, String> checksums )
     {
         this.paths = paths;
         this.repositoryUrls = repositories;
+        this.checksums = checksums;
     }
 
 
@@ -90,4 +97,12 @@ public class ArtifactList
         }
     }
 
+    /**
+     *
+     * @return the HashMap of artifacts paths to relevant checksums
+     */
+    public HashMap<String, String> getChecksums()
+    {
+        return checksums;
+    }
 }

@@ -60,7 +60,8 @@ public class SinglePlaintextDownloadFTest
 
         // Write the plaintext file we'll use as input.
         File plaintextList = temporaryFolder.newFile( "artifact-list." + getClass().getSimpleName() + ".txt" );
-        FileUtils.write( plaintextList, path );
+        String pathWithChecksum = contentGenerator.newPlaintextEntryWithChecksum( path, content );
+        FileUtils.write( plaintextList, pathWithChecksum );
 
         Options opts = new Options();
         opts.setBaseUrls( Collections.singletonList( server.getBaseUri() ) );

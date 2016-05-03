@@ -15,27 +15,6 @@
  */
 package com.redhat.rcm.offliner;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
 import com.redhat.rcm.offliner.alist.ArtifactListReader;
 import com.redhat.rcm.offliner.alist.FoloReportArtifactListReader;
 import com.redhat.rcm.offliner.alist.PlaintextArtifactListReader;
@@ -61,6 +40,30 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.kohsuke.args4j.CmdLineException;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.commons.codec.digest.DigestUtils.sha256Hex;
 
 public class Main
 {
@@ -223,6 +226,7 @@ public class Main
 
         final List<String> paths;
         List<String> baseUrls = this.baseUrls;
+        HashMap<String, String> checksums = new HashMap<String, String>();
         try
         {
             File file = new File( filepath );
@@ -245,6 +249,7 @@ public class Main
             }
 
             paths = artifactList.getPaths();
+            checksums = artifactList.getChecksums();
         }
         catch ( final IOException e )
         {
@@ -263,7 +268,7 @@ public class Main
         {
             if ( !seen.contains( path ) )
             {
-                executor.submit( newDownloader( baseUrls, path ) );
+                executor.submit( newDownloader( baseUrls, path, checksums ) );
                 count++;
             }
         }
@@ -284,7 +289,8 @@ public class Main
         throw new OfflinerException( "No reader supports file %s.", file.getPath() );
     }
 
-    private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path )
+    private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path,
+                                                    final HashMap<String, String> checksums )
     {
         return ( ) -> {
             final String name = Thread.currentThread()
@@ -325,13 +331,31 @@ public class Main
                         {
                             try (FileOutputStream out = new FileOutputStream( part ))
                             {
-                                IOUtils.copy( response.getEntity()
-                                              .getContent(), out );
+                                byte[] b = IOUtils.toByteArray( response.getEntity().getContent() );
+                                out.write( b );
 
-                                out.close();
+                                if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) )
+                                {
+                                    out.flush();
+                                    out.close();
+                                }
+                                else
+                                {
+                                    String original = checksums.get( path );
+                                    String current = sha256Hex( b );
+
+                                    if ( !original.equals( current ) )
+                                    {
+                                        throw new OfflinerException( "Checksum checked error on file: %s.", path );
+                                    }
+                                    ChecksumOutputStream checksumOutputStream =
+                                            new ChecksumOutputStream( out, current );
+                                    checksumOutputStream.flush();
+                                    checksumOutputStream.close();
+                                }
                             }
-                            part.renameTo( target );
 
+                            part.renameTo( target );
                             return DownloadResult.success( baseUrl, path );
                         }
                         else if ( statusCode == 404 )

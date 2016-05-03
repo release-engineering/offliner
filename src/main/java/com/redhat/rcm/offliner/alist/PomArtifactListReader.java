@@ -15,25 +15,6 @@
  */
 package com.redhat.rcm.offliner.alist;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.redhat.rcm.offliner.OfflinerException;
 import com.redhat.rcm.offliner.model.ArtifactList;
 import com.redhat.rcm.offliner.util.UrlUtils;
@@ -57,6 +38,25 @@ import org.apache.maven.settings.Server;
 import org.apache.maven.settings.Settings;
 import org.apache.maven.settings.io.xpp3.SettingsXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Artifact list paths reader that consumes pom files. It reads all dependencies and constructs paths from them.
@@ -208,7 +208,7 @@ public class PomArtifactListReader
 
         }
 
-        ArtifactList result = new ArtifactList( new ArrayList<String>( paths ), repoUrls );
+        ArtifactList result = new ArtifactList( new ArrayList<String>( paths ), repoUrls, null );
         return result;
     }
 
@@ -326,7 +326,6 @@ public class PomArtifactListReader
         String filename = file.getName();
         return "pom.xml".equals( filename ) || filename.endsWith( ".pom" );
     }
-
 
     private static class TypeMapping
     {

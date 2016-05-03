@@ -15,13 +15,15 @@
  */
 package com.redhat.rcm.offliner.alist;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-
 import com.redhat.rcm.offliner.model.ArtifactList;
 import org.apache.commons.io.FileUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * Artifact list paths reader which reads the paths from a plaintext file. On each line a relative path to the
@@ -36,8 +38,27 @@ public class PlaintextArtifactListReader implements ArtifactListReader
     @Override
     public ArtifactList readPaths( final File file ) throws IOException
     {
-        List<String> paths = FileUtils.readLines( file );
-        ArtifactList result = new ArtifactList( paths, Collections.emptyList() );
+        List<String> paths = new ArrayList<>();
+        HashMap<String, String> checksums = new HashMap<String, String>();
+        List<String> contents = FileUtils.readLines( file );
+
+        if ( null == contents || contents.isEmpty() )
+        {
+            return null;
+        }
+
+        for ( String c : contents )
+        {
+            String[] cArr = c.split( "," );
+            if ( cArr.length <= 1 )
+            {
+                continue;
+            }
+            paths.add( cArr[1] );
+            checksums.put( cArr[1], cArr[0] );
+        }
+
+        ArtifactList result = new ArtifactList( paths, Collections.emptyList(), checksums );
         return result;
     }
 
@@ -48,5 +69,4 @@ public class PlaintextArtifactListReader implements ArtifactListReader
         // TODO think of a better way how to check if the file is supported by this reader
         return !filename.endsWith(".json") && !filename.endsWith( ".xml" ) && !filename.endsWith( ".pom" );
     }
-
 }

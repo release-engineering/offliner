@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Artifact list paths reader which reads the paths from a plaintext file. On each line a relative path to the
@@ -35,11 +36,15 @@ import java.util.List;
 public class PlaintextArtifactListReader implements ArtifactListReader
 {
 
+    public PlaintextArtifactListReader()
+    {
+    }
+
     @Override
     public ArtifactList readPaths( final File file ) throws IOException
     {
         List<String> paths = new ArrayList<>();
-        HashMap<String, String> checksums = new HashMap<String, String>();
+        Map<String, String> checksums = new HashMap<String, String>();
         List<String> contents = FileUtils.readLines( file );
 
         if ( null == contents || contents.isEmpty() )

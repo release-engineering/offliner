@@ -15,16 +15,6 @@
  */
 package com.redhat.rcm.offliner;
 
-import static org.junit.Assert.*;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
-
 import com.redhat.rcm.offliner.alist.PomArtifactListReader;
 import com.redhat.rcm.offliner.model.ArtifactList;
 import org.apache.commons.io.FileUtils;
@@ -38,15 +28,29 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 public class PomArtifactListReaderTest
 {
 
     private static final String TEMP_DIR = "target/temp";
 
+    private static final String TEMP_POM_DIR = "target/temp/pom";
+
     @BeforeClass
     public static void prepare() throws IOException
     {
-        File tempDir = new File( TEMP_DIR );
+        File tempDir = new File( TEMP_POM_DIR );
         if ( tempDir.exists() )
         {
             FileUtils.deleteDirectory( tempDir );
@@ -60,7 +64,7 @@ public class PomArtifactListReaderTest
         for ( String resource : resources )
         {
             InputStream is = PomArtifactListReaderTest.class.getClassLoader().getResourceAsStream( resource );
-            File target = new File( TEMP_DIR, resource );
+            File target = new File( TEMP_POM_DIR, resource );
             OutputStream os = new FileOutputStream( target );
             try
             {
@@ -86,7 +90,7 @@ public class PomArtifactListReaderTest
 
     private File getFile( final String filename )
     {
-        return new File( TEMP_DIR, filename );
+        return new File( TEMP_POM_DIR, filename );
     }
 
     /**

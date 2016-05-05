@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -53,7 +54,7 @@ public class FoloReportArtifactListReader
 
         Set<String> repositories = new HashSet<>();
         List<String> paths = new ArrayList<>();
-        HashMap<String, String> checksums = new HashMap<String, String>();
+        Map<String, String> checksums = new HashMap<String, String>();
         if ( downloads != null )
         {
             for ( TrackedContentEntryDTO download : downloads )

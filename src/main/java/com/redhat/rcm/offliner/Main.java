@@ -226,7 +226,7 @@ public class Main
 
         final List<String> paths;
         List<String> baseUrls = this.baseUrls;
-        HashMap<String, String> checksums = new HashMap<String, String>();
+        Map<String, String> checksums = new HashMap<String, String>();
         try
         {
             File file = new File( filepath );
@@ -290,7 +290,7 @@ public class Main
     }
 
     private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path,
-                                                    final HashMap<String, String> checksums )
+                                                    final Map<String, String> checksums )
     {
         return ( ) -> {
             final String name = Thread.currentThread()

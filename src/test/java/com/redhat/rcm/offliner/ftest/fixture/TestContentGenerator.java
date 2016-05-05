@@ -18,7 +18,6 @@ package com.redhat.rcm.offliner.ftest.fixture;
 import com.redhat.rcm.offliner.folo.StoreKey;
 import com.redhat.rcm.offliner.folo.TrackedContentEntryDTO;
 import com.redhat.rcm.offliner.util.UrlUtils;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
@@ -30,7 +29,6 @@ import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Supplier;
 
 import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
 import static org.apache.commons.codec.digest.DigestUtils.sha256Hex;
@@ -173,7 +171,7 @@ public class TestContentGenerator
 
     public Dependency newDependency( String type, String scope )
     {
-        return newDependency( type, null, null );
+        return newDependency( type, null, scope );
     }
 
     public TrackedContentEntryDTO newRemoteContentEntry( StoreKey key, String type, String originBaseUri, byte[] content )

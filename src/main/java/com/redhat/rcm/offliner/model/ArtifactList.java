@@ -16,8 +16,9 @@
 package com.redhat.rcm.offliner.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
+import java.util.Map;
 
 /**
  * Artifact list DTO. It contains artifact paths list along with the list of repositories where to look for the
@@ -36,17 +37,23 @@ public class ArtifactList
      */
     private List<String> paths;
 
+    /**
+     * Map of artifacts relative paths to relevant checksums
+     */
+    private Map<String, String> checksums;
 
     public ArtifactList()
     {
         this.paths = new ArrayList<>();
         this.repositoryUrls = new ArrayList<>();
+        this.checksums = new HashMap<String, String>();
     }
 
-    public ArtifactList( List<String> paths, List<String> repositories )
+    public ArtifactList( List<String> paths, List<String> repositories, Map<String, String> checksums )
     {
         this.paths = paths;
         this.repositoryUrls = repositories;
+        this.checksums = checksums;
     }
 
 
@@ -90,4 +97,12 @@ public class ArtifactList
         }
     }
 
+    /**
+     *
+     * @return the Map of artifacts paths to relevant checksums
+     */
+    public Map<String, String> getChecksums()
+    {
+        return checksums;
+    }
 }

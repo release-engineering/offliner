@@ -30,8 +30,10 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -52,6 +54,7 @@ public class FoloReportArtifactListReader
 
         Set<String> repositories = new HashSet<>();
         List<String> paths = new ArrayList<>();
+        Map<String, String> checksums = new HashMap<String, String>();
         if ( downloads != null )
         {
             for ( TrackedContentEntryDTO download : downloads )
@@ -72,11 +75,16 @@ public class FoloReportArtifactListReader
                 {
                     paths.add( path );
                     repositories.add( url.substring( 0, url.length() - path.length() ) );
+                    String checksum = download.getSha256();
+                    if ( null != checksum && !checksum.isEmpty() )
+                    {
+                        checksums.put( path, checksum );
+                    }
                 }
             }
         }
 
-        return new ArtifactList( paths, new ArrayList<>( repositories ) );
+        return new ArtifactList( paths, new ArrayList<>( repositories ), checksums );
     }
 
     private ObjectMapper newObjectMapper()

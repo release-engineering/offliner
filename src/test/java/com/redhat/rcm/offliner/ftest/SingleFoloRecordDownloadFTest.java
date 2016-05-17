@@ -15,7 +15,6 @@
  */
 package com.redhat.rcm.offliner.ftest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.rcm.offliner.Main;
 import com.redhat.rcm.offliner.Options;
 import com.redhat.rcm.offliner.folo.StoreKey;
@@ -23,7 +22,6 @@ import com.redhat.rcm.offliner.folo.StoreType;
 import com.redhat.rcm.offliner.folo.TrackedContentDTO;
 import com.redhat.rcm.offliner.folo.TrackedContentEntryDTO;
 import com.redhat.rcm.offliner.folo.TrackingKey;
-import com.redhat.rcm.offliner.folo.io.FoloSerializerModule;
 import com.redhat.rcm.offliner.ftest.fixture.TestRepositoryServer;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
@@ -42,7 +40,7 @@ import static org.junit.Assert.assertThat;
  * Created by jdcasey on 4/20/16.
  */
 public class SingleFoloRecordDownloadFTest
-    extends AbstractOfflinerFunctionalTest
+        extends AbstractOfflinerFunctionalTest
 {
     /**
      * In general, we should only have one test method per functional test. This allows for the best parallelism when we
@@ -90,11 +88,21 @@ public class SingleFoloRecordDownloadFTest
         // run `new Main(opts).run()` and return the Main instance so we can query it for errors, etc.
         Main finishedMain = run( opts );
 
-        assertThat( "Wrong number of downloads logged. Should have been 1.", finishedMain.getDownloaded(), equalTo( 1 ) );
+        assertThat( "Wrong number of downloads logged. Should have been 1.", finishedMain.getDownloaded(),
+                    equalTo( 1 ) );
         assertThat( "Errors should be empty!", finishedMain.getErrors().isEmpty(), equalTo( true ) );
 
         File downloaded = new File( downloads, path );
         assertThat( "File: " + path + " doesn't seem to have been downloaded!", downloaded.exists(), equalTo( true ) );
-        assertThat( "Downloaded file: " + path + " contains the wrong content!", FileUtils.readFileToByteArray( downloaded ), equalTo( content ) );
+        assertThat( "Downloaded file: " + path + " contains the wrong content!",
+                    FileUtils.readFileToByteArray( downloaded ), equalTo( content ) );
+
+        //re-run to test the function of avoiding re-downloading existing files
+        Main aviodedMain = run( opts );
+        assertThat( "Wrong number of downloads logged. Should have been 0.", aviodedMain.getDownloaded(),
+                    equalTo( 0 ) );
+        assertThat( "Wrong number of avoided downloads logged. Should have been 1", aviodedMain.getAvoided(),
+                    equalTo( 1 ) );
+        assertThat( "Errors should be empty!", aviodedMain.getErrors().isEmpty(), equalTo( true ) );
     }
 }

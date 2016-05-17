@@ -22,6 +22,7 @@ import com.redhat.rcm.offliner.alist.PomArtifactListReader;
 import com.redhat.rcm.offliner.model.ArtifactList;
 import com.redhat.rcm.offliner.model.DownloadResult;
 import com.redhat.rcm.offliner.util.UrlUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHost;
@@ -111,6 +112,8 @@ public class Main
 
     private int downloaded = 0;
 
+    private int avoided = 0;
+
     private ConcurrentHashMap<String, Throwable> errors;
 
     private List<ArtifactListReader> artifactListReaders;
@@ -157,6 +160,11 @@ public class Main
                 {
                     downloaded++;
                     System.out.printf( "<<<SUCCESS: %s\n", result.getPath() );
+                }
+                else if ( result.isAvoided() )
+                {
+                    avoided++;
+                    System.out.printf( "<<<Avoided: %s\n", result.getPath() );
                 }
                 else
                 {
@@ -300,6 +308,24 @@ public class Main
             try
             {
                 final File target = new File( opts.getDownloads(), path );
+
+                if ( target.exists() )
+                {
+                    if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) )
+                    {
+                        return DownloadResult.avoid( path, true );
+                    }
+
+                    byte[] b = FileUtils.readFileToByteArray( target );
+                    String original = checksums.get( path );
+                    String current = sha256Hex( b );
+
+                    if ( original.equals( current ) )
+                    {
+                        return DownloadResult.avoid( path, true );
+                    }
+                }
+
                 final File dir = target.getParentFile();
                 dir.mkdirs();
 
@@ -346,7 +372,8 @@ public class Main
 
                                     if ( !original.equals( current ) )
                                     {
-                                        throw new OfflinerException( "Checksum checked error on file: %s.", path );
+                                        return DownloadResult.error( path, new IOException(
+                                                "Checksum checked error on file: " + path ) );
                                     }
                                     ChecksumOutputStream checksumOutputStream =
                                             new ChecksumOutputStream( out, current );
@@ -512,6 +539,10 @@ public class Main
         return downloaded;
     }
 
+    public int getAvoided()
+    {
+        return avoided;
+    }
     public ConcurrentHashMap<String, Throwable> getErrors()
     {
         return errors;

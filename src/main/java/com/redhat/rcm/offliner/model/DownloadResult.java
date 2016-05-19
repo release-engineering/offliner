@@ -26,26 +26,39 @@ public class DownloadResult
 
     private Exception error;
 
-    public static DownloadResult success( String originUrl, String path )
-    {
-        return new DownloadResult( originUrl, path, null );
-    }
+    private boolean avoided;
 
-    public static DownloadResult error( String path, Exception error )
-    {
-        return new DownloadResult( null, path, error );
-    }
-
-    public DownloadResult( String originUrl, String path, Exception error )
+    public DownloadResult( String originUrl, String path, Exception error, boolean avoided )
     {
         this.originUrl = originUrl;
         this.path = path;
         this.error = error;
+        this.avoided = avoided;
+    }
+
+    public static DownloadResult success( String originUrl, String path )
+    {
+        return new DownloadResult( originUrl, path, null, false );
+    }
+
+    public static DownloadResult error( String path, Exception error )
+    {
+        return new DownloadResult( null, path, error, false );
+    }
+
+    public static DownloadResult avoid( String path, boolean avoided )
+    {
+        return new DownloadResult( null, path, null, avoided );
     }
 
     public boolean isSuccess()
     {
-        return error == null;
+        return error == null && !avoided;
+    }
+
+    public boolean isAvoided()
+    {
+        return avoided;
     }
 
     public String getPath()

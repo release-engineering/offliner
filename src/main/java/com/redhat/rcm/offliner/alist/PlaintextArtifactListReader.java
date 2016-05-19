@@ -36,10 +36,6 @@ import java.util.Map;
 public class PlaintextArtifactListReader implements ArtifactListReader
 {
 
-    public PlaintextArtifactListReader()
-    {
-    }
-
     @Override
     public ArtifactList readPaths( final File file ) throws IOException
     {

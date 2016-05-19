@@ -17,11 +17,6 @@ package com.redhat.rcm.offliner.ftest;
 
 import com.redhat.rcm.offliner.Main;
 import com.redhat.rcm.offliner.Options;
-import com.redhat.rcm.offliner.folo.StoreKey;
-import com.redhat.rcm.offliner.folo.StoreType;
-import com.redhat.rcm.offliner.folo.TrackedContentDTO;
-import com.redhat.rcm.offliner.folo.TrackedContentEntryDTO;
-import com.redhat.rcm.offliner.folo.TrackingKey;
 import com.redhat.rcm.offliner.ftest.fixture.TestRepositoryServer;
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
@@ -33,13 +28,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
 /**
- * Create a one-path content record as if it's from Indy's Folo add-on, then use an overridden repoUrl list (to the test
- * server fixture) to download the content. The record will contain an origin URL but NOT a local URL, so we check the
- * ability to download from the server upstream of Indy if that URL is present.
- *
- * Created by jdcasey on 4/20/16.
+ * Test the avoided result of re-download existing files.
  */
-public class SingleFoloRecordDownloadFTest
+public class PlaintextAvoidedDownloadFTest
         extends AbstractOfflinerFunctionalTest
 {
     /**
@@ -56,25 +47,17 @@ public class SingleFoloRecordDownloadFTest
         TestRepositoryServer server = newRepositoryServer();
 
         // Generate some test content
+        String path = contentGenerator.newArtifactPath( "jar" );
         byte[] content = contentGenerator.newBinaryContent( 1024 );
-
-        TrackedContentEntryDTO dto =
-                contentGenerator.newRemoteContentEntry( new StoreKey( StoreType.remote, "test" ), "jar",
-                                                        server.getBaseUri(), content );
-
-        TrackedContentDTO record = new TrackedContentDTO( new TrackingKey( "test-record" ), Collections.emptySet(),
-                                                          Collections.singleton( dto ) );
-
-        String path = dto.getPath();
 
         // Register the generated content by writing it to the path within the repo server's dir structure.
         // This way when the path is requested it can be downloaded instead of returning a 404.
         server.registerContent( path, content );
 
         // Write the plaintext file we'll use as input.
-        File foloRecord = temporaryFolder.newFile( "folo." + getClass().getSimpleName() + ".json" );
-
-        FileUtils.write( foloRecord, objectMapper.writeValueAsString( record ) );
+        File plaintextList = temporaryFolder.newFile( "artifact-list." + getClass().getSimpleName() + ".txt" );
+        String pathWithChecksum = contentGenerator.newPlaintextEntryWithChecksum( path, content );
+        FileUtils.write( plaintextList, pathWithChecksum );
 
         Options opts = new Options();
         opts.setBaseUrls( Collections.singletonList( server.getBaseUri() ) );
@@ -83,18 +66,17 @@ public class SingleFoloRecordDownloadFTest
         File downloads = temporaryFolder.newFolder();
 
         opts.setDownloads( downloads );
-        opts.setLocations( Collections.singletonList( foloRecord.getAbsolutePath() ) );
+        opts.setLocations( Collections.singletonList( plaintextList.getAbsolutePath() ) );
 
-        // run `new Main(opts).run()` and return the Main instance so we can query it for errors, etc.
-        Main finishedMain = run( opts );
+        Main firstMain = run( opts );
+        assertThat( "Wrong number of downloads logged. Should have been 1.", firstMain.getDownloaded(), equalTo( 1 ) );
 
-        assertThat( "Wrong number of downloads logged. Should have been 1.", finishedMain.getDownloaded(),
+        //re-run to test the function of avoiding re-downloading existing files
+        Main secondMain = run( opts );
+        assertThat( "Wrong number of downloads logged. Should have been 0.", secondMain.getDownloaded(), equalTo( 0 ) );
+        assertThat( "Wrong number of avoided downloads logged. Should have been 1", secondMain.getAvoided(),
                     equalTo( 1 ) );
-        assertThat( "Errors should be empty!", finishedMain.getErrors().isEmpty(), equalTo( true ) );
+        assertThat( "Errors should be empty!", secondMain.getErrors().isEmpty(), equalTo( true ) );
 
-        File downloaded = new File( downloads, path );
-        assertThat( "File: " + path + " doesn't seem to have been downloaded!", downloaded.exists(), equalTo( true ) );
-        assertThat( "Downloaded file: " + path + " contains the wrong content!",
-                    FileUtils.readFileToByteArray( downloaded ), equalTo( content ) );
     }
 }

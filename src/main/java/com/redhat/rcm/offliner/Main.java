@@ -311,7 +311,8 @@ public class Main
 
                 if ( target.exists() )
                 {
-                    if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) )
+                    if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) || null == checksums
+                            .get( path ) )
                     {
                         return DownloadResult.avoid( path, true );
                     }
@@ -360,7 +361,8 @@ public class Main
                                 byte[] b = IOUtils.toByteArray( response.getEntity().getContent() );
                                 out.write( b );
 
-                                if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) )
+                                if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path )
+                                        || null == checksums.get( path ) )
                                 {
                                     out.flush();
                                     out.close();

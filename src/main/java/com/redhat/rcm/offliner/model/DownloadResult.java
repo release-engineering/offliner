@@ -53,12 +53,12 @@ public class DownloadResult
 
     public boolean isSuccess()
     {
-        return error == null && avoided == false;
+        return error == null && !avoided;
     }
 
     public boolean isAvoided()
     {
-        return avoided == true;
+        return avoided;
     }
 
     public String getPath()
@@ -74,10 +74,5 @@ public class DownloadResult
     public Exception getError()
     {
         return error;
-    }
-
-    public boolean getAvoided()
-    {
-        return avoided;
     }
 }

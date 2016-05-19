@@ -83,14 +83,5 @@ public class SinglePlaintextDownloadFTest
         assertThat( "File: " + path + " doesn't seem to have been downloaded!", downloaded.exists(), equalTo( true ) );
         assertThat( "Downloaded file: " + path + " contains the wrong content!",
                     FileUtils.readFileToByteArray( downloaded ), equalTo( content ) );
-
-        //re-run to test the function of avoiding re-downloading existing files
-        Main aviodedMain = run( opts );
-        assertThat( "Wrong number of downloads logged. Should have been 0.", aviodedMain.getDownloaded(),
-                    equalTo( 0 ) );
-        assertThat( "Wrong number of avoided downloads logged. Should have been 1", aviodedMain.getAvoided(),
-                    equalTo( 1 ) );
-        assertThat( "Errors should be empty!", aviodedMain.getErrors().isEmpty(), equalTo( true ) );
-
     }
 }

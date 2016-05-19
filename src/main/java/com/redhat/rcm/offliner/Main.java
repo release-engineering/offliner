@@ -70,6 +70,33 @@ public class Main
 {
     private static final String SEP = "---------------------------------------------------------------";
 
+    private final Options opts;
+
+    private CloseableHttpClient client;
+
+    private HttpClientContext contextPrototype;
+
+    private ExecutorService executorService;
+
+    private ExecutorCompletionService<DownloadResult> executor;
+
+    private int downloaded = 0;
+
+    private int avoided = 0;
+
+    private ConcurrentHashMap<String, Throwable> errors;
+
+    private List<ArtifactListReader> artifactListReaders;
+
+    private List<String> baseUrls;
+
+    public Main( final Options opts )
+            throws MalformedURLException
+    {
+        this.opts = opts;
+        init();
+    }
+
     public static void main( final String[] args )
     {
         final Options opts = new Options();
@@ -100,34 +127,6 @@ public class Main
         }
     }
 
-    private final Options opts;
-
-    private CloseableHttpClient client;
-
-    private HttpClientContext contextPrototype;
-
-    private ExecutorService executorService;
-
-    private ExecutorCompletionService<DownloadResult> executor;
-
-    private int downloaded = 0;
-
-    private int avoided = 0;
-
-    private ConcurrentHashMap<String, Throwable> errors;
-
-    private List<ArtifactListReader> artifactListReaders;
-
-    private List<String> baseUrls;
-
-    public Main( final Options opts )
-        throws MalformedURLException
-    {
-        this.opts = opts;
-        init();
-    }
-
-
     public Main run()
     {
         final List<String> files = opts.getLocations();
@@ -148,7 +147,7 @@ public class Main
 
             for ( int i = 0; i < total; i++ )
             {
-                System.out.printf("Waiting for %d downloads\n", (total - i));
+                System.out.printf( "Waiting for %d downloads\n", ( total - i ) );
 
                 Future<DownloadResult> task = executor.take();
                 DownloadResult result = task.get();
@@ -221,8 +220,8 @@ public class Main
             catch ( final IOException e )
             {
                 e.printStackTrace();
-                System.err.println(
-                        "Failed to write download errors to: " + Options.ERROR_LOG + ". See above for more information." );
+                System.err.println( "Failed to write download errors to: " + Options.ERROR_LOG
+                                            + ". See above for more information." );
             }
         }
     }
@@ -300,11 +299,9 @@ public class Main
     private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path,
                                                     final Map<String, String> checksums )
     {
-        return ( ) -> {
-            final String name = Thread.currentThread()
-                                      .getName();
-            Thread.currentThread()
-                  .setName( "download--" + path );
+        return () -> {
+            final String name = Thread.currentThread().getName();
+            Thread.currentThread().setName( "download--" + path );
             try
             {
                 final File target = new File( opts.getDownloads(), path );
@@ -399,8 +396,7 @@ public class Main
                         }
                         else
                         {
-                            final String serverError = IOUtils.toString( response.getEntity()
-                                                                         .getContent() );
+                            final String serverError = IOUtils.toString( response.getEntity().getContent() );
 
                             String message = String.format(
                                     "Error downloading path: %s.\n%s\nServer status: %s\nServer response was:\n%s\n%s",
@@ -419,7 +415,7 @@ public class Main
                     }
                     catch ( final IOException e )
                     {
-                        return DownloadResult.error( path, new IOException("URL: " + url + " failed.", e ) );
+                        return DownloadResult.error( path, new IOException( "URL: " + url + " failed.", e ) );
                     }
                     finally
                     {
@@ -437,8 +433,7 @@ public class Main
             }
             finally
             {
-                Thread.currentThread()
-                      .setName( name );
+                Thread.currentThread().setName( name );
             }
 
             return null;
@@ -446,11 +441,11 @@ public class Main
     }
 
     private void init()
-        throws MalformedURLException
+            throws MalformedURLException
     {
         int cpus = Runtime.getRuntime().availableProcessors();
         executorService = Executors.newFixedThreadPool( cpus * 2, ( final Runnable r ) -> {
-//        executorService = Executors.newCachedThreadPool( ( final Runnable r ) -> {
+            //        executorService = Executors.newCachedThreadPool( ( final Runnable r ) -> {
             final Thread t = new Thread( r );
             t.setDaemon( true );
 
@@ -464,8 +459,7 @@ public class Main
         final PoolingHttpClientConnectionManager ccm = new PoolingHttpClientConnectionManager();
         ccm.setMaxTotal( opts.getConnections() );
 
-        final HttpClientBuilder builder = HttpClients.custom()
-                                                     .setConnectionManager( ccm );
+        final HttpClientBuilder builder = HttpClients.custom().setConnectionManager( ccm );
 
         final String proxy = opts.getProxy();
         String proxyHost = proxy;
@@ -545,6 +539,7 @@ public class Main
     {
         return avoided;
     }
+
     public ConcurrentHashMap<String, Throwable> getErrors()
     {
         return errors;

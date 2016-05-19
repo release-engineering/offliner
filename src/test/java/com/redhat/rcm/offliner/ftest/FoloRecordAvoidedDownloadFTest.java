@@ -82,13 +82,11 @@ public class FoloRecordAvoidedDownloadFTest
         opts.setLocations( Collections.singletonList( foloRecord.getAbsolutePath() ) );
 
         Main firstMain = run( opts );
-        assertThat( "Wrong number of downloads logged. Should have been 1.", firstMain.getDownloaded(),
-                    equalTo( 1 ) );
+        assertThat( "Wrong number of downloads logged. Should have been 1.", firstMain.getDownloaded(), equalTo( 1 ) );
 
         //re-run to test the function of avoiding re-downloading existing files
         Main secondMain = run( opts );
-        assertThat( "Wrong number of downloads logged. Should have been 0.", secondMain.getDownloaded(),
-                    equalTo( 0 ) );
+        assertThat( "Wrong number of downloads logged. Should have been 0.", secondMain.getDownloaded(), equalTo( 0 ) );
         assertThat( "Wrong number of avoided downloads logged. Should have been 1", secondMain.getAvoided(),
                     equalTo( 1 ) );
         assertThat( "Errors should be empty!", secondMain.getErrors().isEmpty(), equalTo( true ) );

@@ -87,8 +87,7 @@ public class POMDepsAvoidedDownloadFTest
 
         //re-run to test the function of avoiding re-downloading existing files
         Main secondMain = run( opts );
-        assertThat( "Wrong number of downloads logged. Should have been 0.", secondMain.getDownloaded(),
-                    equalTo( 0 ) );
+        assertThat( "Wrong number of downloads logged. Should have been 0.", secondMain.getDownloaded(), equalTo( 0 ) );
         assertThat( "Wrong number of avoided downloads logged. Should have been 2", secondMain.getAvoided(),
                     equalTo( 2 ) );
         assertThat( "Errors should be empty!", secondMain.getErrors().isEmpty(), equalTo( true ) );

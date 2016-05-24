@@ -24,6 +24,7 @@ import com.redhat.rcm.offliner.model.DownloadResult;
 import com.redhat.rcm.offliner.util.UrlUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -40,6 +41,13 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.maven.artifact.repository.metadata.Metadata;
+import org.apache.maven.artifact.repository.metadata.Versioning;
+import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
+import org.commonjava.maven.atlas.ident.ref.ProjectRef;
+import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
+import org.commonjava.maven.atlas.ident.util.ArtifactPathInfo;
+import org.commonjava.maven.atlas.ident.version.SingleVersion;
 import org.kohsuke.args4j.CmdLineException;
 
 import java.io.File;
@@ -49,7 +57,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -139,10 +149,11 @@ public class Main
         try
         {
             Set<String> seen = new HashSet<>();
+            Set<String> pomPaths = new HashSet<>();
             int total = 0;
             for ( final String file : files )
             {
-                total += download( file, seen );
+                total += download( file, seen, pomPaths );
             }
 
             for ( int i = 0; i < total; i++ )
@@ -171,6 +182,8 @@ public class Main
                     System.out.printf( "<<<FAIL: %s\n", result.getPath() );
                 }
             }
+
+            generateMetadata( pomPaths );
 
             logErrors();
 
@@ -201,7 +214,8 @@ public class Main
 
     private void logErrors()
     {
-        System.out.printf( "%d downloads succeeded.\n%d downloads failed.\n\n", downloaded, errors.size() );
+        System.out.printf( "%d downloads succeeded.\n%d downloads avoided.\n%d downloads failed.\n\n", downloaded,
+                           avoided, errors.size() );
 
         if ( !errors.isEmpty() )
         {
@@ -226,7 +240,7 @@ public class Main
         }
     }
 
-    private int download( final String filepath, Set<String> seen )
+    private int download( final String filepath, Set<String> seen, Set<String> pomPaths )
             throws IOException, OfflinerException
     {
         System.out.println( "Downloading artifacts from: " + filepath );
@@ -275,7 +289,7 @@ public class Main
         {
             if ( !seen.contains( path ) )
             {
-                executor.submit( newDownloader( baseUrls, path, checksums ) );
+                executor.submit( newDownloader( baseUrls, path, checksums, pomPaths ) );
                 count++;
             }
         }
@@ -297,7 +311,7 @@ public class Main
     }
 
     private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path,
-                                                    final Map<String, String> checksums )
+                                                    final Map<String, String> checksums, Set<String> pomPaths )
     {
         return () -> {
             final String name = Thread.currentThread().getName();
@@ -311,6 +325,10 @@ public class Main
                     if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) || null == checksums
                             .get( path ) )
                     {
+                        if ( path.endsWith( ".pom" ) )
+                        {
+                            pomPaths.add( path );
+                        }
                         return DownloadResult.avoid( path, true );
                     }
 
@@ -320,6 +338,10 @@ public class Main
 
                     if ( original.equals( current ) )
                     {
+                        if ( path.endsWith( ".pom" ) )
+                        {
+                            pomPaths.add( path );
+                        }
                         return DownloadResult.avoid( path, true );
                     }
                 }
@@ -382,6 +404,10 @@ public class Main
                             }
 
                             part.renameTo( target );
+                            if ( path.endsWith( ".pom" ) )
+                            {
+                                pomPaths.add( path );
+                            }
                             return DownloadResult.success( baseUrl, path );
                         }
                         else if ( statusCode == 404 )
@@ -528,6 +554,57 @@ public class Main
         artifactListReaders.add( new FoloReportArtifactListReader() );
         artifactListReaders.add( new PlaintextArtifactListReader() );
         artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), opts.getTypeMapping(), creds ) );
+    }
+
+    private void generateMetadata( Set<String> pomPaths )
+    {
+        Map<ProjectRef, List<SingleVersion>> metas = new HashMap<ProjectRef, List<SingleVersion>>();
+        for ( String path : pomPaths )
+        {
+            ArtifactPathInfo artifactPathInfo = ArtifactPathInfo.parse( path );
+            ProjectVersionRef gav = artifactPathInfo.getProjectId();
+            List<SingleVersion> singleVersions = new ArrayList<SingleVersion>();
+            if ( !metas.isEmpty() && metas.containsKey( gav.asProjectRef() ) )
+            {
+                singleVersions = metas.get( gav.asProjectRef() );
+            }
+            singleVersions.add( (SingleVersion) gav.getVersionSpec() );
+            metas.put( gav.asProjectRef(), singleVersions );
+        }
+        for ( ProjectRef ga : metas.keySet() )
+        {
+            List<SingleVersion> singleVersions = metas.get( ga );
+            Collections.sort( singleVersions );
+
+            Metadata master = new Metadata();
+            master.setGroupId( ga.getGroupId() );
+            master.setArtifactId( ga.getArtifactId() );
+            Versioning versioning = new Versioning();
+            for ( SingleVersion v : singleVersions )
+            {
+                versioning.addVersion( v.renderStandard() );
+            }
+            String latest = singleVersions.get( singleVersions.size() - 1 ).renderStandard();
+            versioning.setLatest( latest );
+            versioning.setRelease( latest );
+            master.setVersioning( versioning );
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            File metadataFile = Paths.get( opts.getDownloads().getAbsolutePath(),
+                                           ga.getGroupId().replace( '.', File.separatorChar ), ga.getArtifactId(),
+                                           "maven-metadata.xml" ).toFile();
+            try
+            {
+                new MetadataXpp3Writer().write( baos, master );
+                FileUtils.writeByteArrayToFile( metadataFile, baos.toByteArray() );
+            }
+            catch ( IOException e )
+            {
+                e.printStackTrace();
+                System.err.printf( "\n\nFailed to generate maven-metadata file: %s. See above for more information.\n",
+                                   metadataFile );
+            }
+        }
     }
 
     public int getDownloaded()

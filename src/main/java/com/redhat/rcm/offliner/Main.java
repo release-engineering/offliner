@@ -325,10 +325,7 @@ public class Main
                     if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) || null == checksums
                             .get( path ) )
                     {
-                        if ( path.endsWith( ".pom" ) )
-                        {
-                            pomPaths.add( path );
-                        }
+                        addtoPomPaths( path, pomPaths );
                         return DownloadResult.avoid( path, true );
                     }
 
@@ -338,10 +335,7 @@ public class Main
 
                     if ( original.equals( current ) )
                     {
-                        if ( path.endsWith( ".pom" ) )
-                        {
-                            pomPaths.add( path );
-                        }
+                        addtoPomPaths( path, pomPaths );
                         return DownloadResult.avoid( path, true );
                     }
                 }
@@ -404,10 +398,7 @@ public class Main
                             }
 
                             part.renameTo( target );
-                            if ( path.endsWith( ".pom" ) )
-                            {
-                                pomPaths.add( path );
-                            }
+                            addtoPomPaths( path, pomPaths );
                             return DownloadResult.success( baseUrl, path );
                         }
                         else if ( statusCode == 404 )
@@ -604,6 +595,14 @@ public class Main
                 System.err.printf( "\n\nFailed to generate maven-metadata file: %s. See above for more information.\n",
                                    metadataFile );
             }
+        }
+    }
+
+    private void addtoPomPaths( String path, Set<String> pomPaths )
+    {
+        if ( path.endsWith( ".pom" ) )
+        {
+            pomPaths.add( path );
         }
     }
 

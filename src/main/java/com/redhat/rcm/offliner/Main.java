@@ -149,11 +149,10 @@ public class Main
         try
         {
             Set<String> seen = new HashSet<>();
-            Set<String> pomPaths = new HashSet<>();
             int total = 0;
             for ( final String file : files )
             {
-                total += download( file, seen, pomPaths );
+                total += download( file, seen );
             }
 
             for ( int i = 0; i < total; i++ )
@@ -183,6 +182,9 @@ public class Main
                 }
             }
 
+            Set<String> pomPaths = new HashSet<>();
+            File download = new File( opts.getDownloads().getAbsolutePath() );
+            searchForPomPaths( download, pomPaths );
             generateMetadata( pomPaths );
 
             logErrors();
@@ -240,7 +242,7 @@ public class Main
         }
     }
 
-    private int download( final String filepath, Set<String> seen, Set<String> pomPaths )
+    private int download( final String filepath, Set<String> seen )
             throws IOException, OfflinerException
     {
         System.out.println( "Downloading artifacts from: " + filepath );
@@ -289,7 +291,7 @@ public class Main
         {
             if ( !seen.contains( path ) )
             {
-                executor.submit( newDownloader( baseUrls, path, checksums, pomPaths ) );
+                executor.submit( newDownloader( baseUrls, path, checksums ) );
                 count++;
             }
         }
@@ -311,7 +313,7 @@ public class Main
     }
 
     private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path,
-                                                    final Map<String, String> checksums, Set<String> pomPaths )
+                                                    final Map<String, String> checksums )
     {
         return () -> {
             final String name = Thread.currentThread().getName();
@@ -325,7 +327,6 @@ public class Main
                     if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) || null == checksums
                             .get( path ) )
                     {
-                        addtoPomPaths( path, pomPaths );
                         return DownloadResult.avoid( path, true );
                     }
 
@@ -335,7 +336,6 @@ public class Main
 
                     if ( original.equals( current ) )
                     {
-                        addtoPomPaths( path, pomPaths );
                         return DownloadResult.avoid( path, true );
                     }
                 }
@@ -398,7 +398,6 @@ public class Main
                             }
 
                             part.renameTo( target );
-                            addtoPomPaths( path, pomPaths );
                             return DownloadResult.success( baseUrl, path );
                         }
                         else if ( statusCode == 404 )
@@ -547,6 +546,25 @@ public class Main
         artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), opts.getTypeMapping(), creds ) );
     }
 
+    private void searchForPomPaths( File root, Set<String> pomPaths )
+    {
+        if ( null == root || null == pomPaths )
+        {
+            return;
+        }
+        if ( root.isDirectory() )
+        {
+            for ( File file : root.listFiles() )
+            {
+                searchForPomPaths( file, pomPaths );
+            }
+        }
+        else if ( root.isFile() && root.getName().endsWith( ".pom" ) )
+        {
+            pomPaths.add( root.getPath().substring( opts.getDownloads().getAbsolutePath().length() + 1 ) );
+        }
+    }
+
     private void generateMetadata( Set<String> pomPaths )
     {
         Map<ProjectRef, List<SingleVersion>> metas = new HashMap<ProjectRef, List<SingleVersion>>();
@@ -595,14 +613,6 @@ public class Main
                 System.err.printf( "\n\nFailed to generate maven-metadata file: %s. See above for more information.\n",
                                    metadataFile );
             }
-        }
-    }
-
-    private void addtoPomPaths( String path, Set<String> pomPaths )
-    {
-        if ( path.endsWith( ".pom" ) )
-        {
-            pomPaths.add( path );
         }
     }
 

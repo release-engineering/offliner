@@ -183,7 +183,7 @@ public class Main
             }
 
             Set<String> pomPaths = new HashSet<>();
-            File download = new File( opts.getDownloads().getAbsolutePath() );
+            File download = opts.getDownloads().getAbsoluteFile();
             searchForPomPaths( download, pomPaths );
             generateMetadata( pomPaths );
 

@@ -49,6 +49,11 @@
     <testTimeout>300</testTimeout>
     <test-forkCount>4</test-forkCount>
     <test-redirectOutput>true</test-redirectOutput>
+
+    <enforceBestPractices>false</enforceBestPractices>
+    <enforceStandards>false</enforceStandards>
+    <enforceVersions>false</enforceVersions>
+    <enforceTripHazards>false</enforceTripHazards>
   </properties>
 
   <dependencies>
@@ -198,6 +203,13 @@
               </configuration>
             </execution>
           </executions>
+        </plugin>
+        <plugin>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <configuration>
+            <detectOfflineLinks>false</detectOfflineLinks>
+            <additionalparam>-Xdoclint:none</additionalparam>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>

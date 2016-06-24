@@ -19,7 +19,11 @@ While Offliner is intended to be used to produce repositories which can be hoste
 
 ### Download and Use. It's That Simple.
 
-You can obtain the jar for the latest release [here](http://repo.maven.apache.org/maven2/com/redhat/red/offliner/offliner). Once downloaded, Offliner can be executed very simply:
+You can obtain the jar for the latest release here:
+
+[http://repo.maven.apache.org/maven2/com/redhat/red/offliner/offliner/](http://repo.maven.apache.org/maven2/com/redhat/red/offliner/offliner/)
+
+Once downloaded, Offliner can be executed very simply:
 
     $ java -jar offliner-<version>.jar [OPTIONS] FILE...
 
@@ -68,5 +72,5 @@ Offliner supports the following arguments:
   * **-x (--proxy) HOST[:PORT]**
 
     Proxy host and port (optional) to use for downloads
-  
+
 

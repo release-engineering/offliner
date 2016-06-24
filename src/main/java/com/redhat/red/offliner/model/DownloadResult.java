@@ -16,6 +16,10 @@
 package com.redhat.red.offliner.model;
 
 /**
+ * DTO used to contain the result of a download attempt. This captures the path downloaded, the origin URL it was
+ * downloaded from, the error (if one occurred), and whether or not the downloaded was avoided because of pre-existing
+ * content on the target filesystem.
+ *
  * Created by jdcasey on 11/20/15.
  */
 public class DownloadResult
@@ -51,6 +55,9 @@ public class DownloadResult
         return new DownloadResult( null, path, null, avoided );
     }
 
+    /**
+     * Success means there was no error, and the download was not avoided.
+     */
     public boolean isSuccess()
     {
         return error == null && !avoided;

@@ -76,6 +76,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.commons.codec.digest.DigestUtils.sha256Hex;
 
+/**
+ * Entry point to Offliner, this class is responsible for orchestrating the entire process.
+ */
 public class Main
 {
     private static final String SEP = "---------------------------------------------------------------";
@@ -137,6 +140,16 @@ public class Main
         }
     }
 
+    /**
+     * Calls {@link #download(String, Set)} for each input location, which spawns a bunch of new {@link Callable}
+     * instances, each responsible for downloading a single file, then returns the number of new Callables added. Then,
+     * this method retrieves the next completed download from the {@link ExecutorCompletionService} that manages the
+     * download tasks, logging results and iterating until all downloads are complete. Finally, this method
+     * orchestrates metadata generation based on the contents of the target directory (including files that were there
+     * before the download began), stats reporting.
+     *
+     * @return This {@link Main} instance.
+     */
     public Main run()
     {
         final List<String> files = opts.getLocations();
@@ -214,6 +227,9 @@ public class Main
         return this;
     }
 
+    /**
+     * Print statistics over System.out and System.err for files downloaded, downloads avoided, and download errors.
+     */
     private void logErrors()
     {
         System.out.printf( "%d downloads succeeded.\n%d downloads avoided.\n%d downloads failed.\n\n", downloaded,
@@ -242,6 +258,16 @@ public class Main
         }
     }
 
+    /**
+     * Parse the given manifest file path (with the appropriate {@link ArtifactListReader}, depending on the file
+     * type. Use the resulting {@link ArtifactList} to generate a series of new download tasks, subtracting any
+     * URLs that have been added from artifact lists that have already been processed.
+     * @param filepath The manifest file containing the artifact list to download
+     * @param seen The list of URLs that are already slated for download (or were pre-existing in the target directory)
+     * @return The number of new download tasks added from this artifact listing
+     * @throws IOException In case the artifact list file cannot be read
+     * @throws OfflinerException In case the artifact list file is not in a valid format (won't parse)
+     */
     private int download( final String filepath, Set<String> seen )
             throws IOException, OfflinerException
     {
@@ -299,6 +325,13 @@ public class Main
         return count;
     }
 
+    /**
+     * Select the most appropriate {@link ArtifactListReader} for the given file. This will be used to parse the list
+     * of files to download, along with any checksum metadata that might be available (depending on the format).
+     * @param file The artifact-list file
+     * @return The {@link ArtifactListReader} that should be used to parse the file
+     * @throws OfflinerException In case there is no reader to handle the given file type
+     */
     private ArtifactListReader getArtifactListReader( File file )
             throws OfflinerException
     {
@@ -312,6 +345,18 @@ public class Main
         throw new OfflinerException( "No reader supports file %s.", file.getPath() );
     }
 
+    /**
+     * Creates a new {@link Callable} capable of downloading a single file from a path and a set of base URLs, or
+     * determining that the file has already been downloaded. If the checksums map is given, attempt to verify the
+     * checksum of the file in the target directory or the stream as it's being downloaded.
+     * @param baseUrls The list of base URLs representing the repositories from which files should be downloaded.
+     *                 Each will be tried in order when downloading a path, until one works.
+     * @param path The path to attempt to download from one of the repositories given in baseUrls
+     * @param checksums The map of path -> checksum to use when attempting to verify the integrity of existing files or
+     *                  the download stream
+     * @return The Callable that will perform the actual download. At this point it will NOT have been queued for
+     * execution.
+     */
     private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path,
                                                     final Map<String, String> checksums )
     {
@@ -369,31 +414,18 @@ public class Main
                         int statusCode = response.getStatusLine().getStatusCode();
                         if ( statusCode == 200 )
                         {
-                            try (FileOutputStream out = new FileOutputStream( part ))
+                            try (ChecksumOutputStream out = new ChecksumOutputStream( new FileOutputStream( part )))
                             {
-                                byte[] b = IOUtils.toByteArray( response.getEntity().getContent() );
-                                out.write( b );
+                                IOUtils.copy( response.getEntity().getContent(), out );
 
-                                if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path )
-                                        || null == checksums.get( path ) )
+                                if ( checksums != null )
                                 {
-                                    out.flush();
-                                    out.close();
-                                }
-                                else
-                                {
-                                    String original = checksums.get( path );
-                                    String current = sha256Hex( b );
-
-                                    if ( !original.equals( current ) )
+                                    String checksum = checksums.get( path );
+                                    if ( checksum != null && !checksum.equalsIgnoreCase( out.getChecksum() ) )
                                     {
                                         return DownloadResult.error( path, new IOException(
-                                                "Checksum checked error on file: " + path ) );
+                                                "Checksum mismatch on file: " + path ) );
                                     }
-                                    ChecksumOutputStream checksumOutputStream =
-                                            new ChecksumOutputStream( out, current );
-                                    checksumOutputStream.flush();
-                                    checksumOutputStream.close();
                                 }
                             }
 
@@ -456,6 +488,14 @@ public class Main
         };
     }
 
+    /**
+     * Sets up components needed for the download process, including the {@link ExecutorCompletionService},
+     * {@link java.util.concurrent.Executor}, {@link org.apache.http.client.HttpClient}, and {@link ArtifactListReader}
+     * instances. If baseUrls were provided on the command line, it will initialize the "global" baseUrls list to that.
+     * Otherwise it will use {@link Options#DEFAULT_REPO_URL} and {@link Options#CENTRAL_REPO_URL} as the default
+     * baseUrls. If specified, configures the HTTP proxy and username/password for authentication.
+     * @throws MalformedURLException In case an invalid {@link URL} is given as a baseUrl.
+     */
     private void init()
             throws MalformedURLException
     {
@@ -546,6 +586,12 @@ public class Main
         artifactListReaders.add( new PomArtifactListReader( opts.getSettingsXml(), opts.getTypeMapping(), creds ) );
     }
 
+    /**
+     * Scan the download target directory for Maven POM files, which will be used to generate maven-metadata.xml
+     * (Maven repository metadata) files.
+     * @param root The download target directory to scan
+     * @param pomPaths The list of POM paths collected in previous calls (during the same {@link Main#run()} execution)
+     */
     private void searchForPomPaths( File root, Set<String> pomPaths )
     {
         if ( null == root || null == pomPaths )
@@ -565,6 +611,11 @@ public class Main
         }
     }
 
+    /**
+     * Given a list of Maven POM files, generate appropriate Maven repository metadata files by parsing the POM's paths
+     * and extracting GroupId / ArtifactId / Version information.
+     * @param pomPaths List of POM paths to parse
+     */
     private void generateMetadata( Set<String> pomPaths )
     {
         Map<ProjectRef, List<SingleVersion>> metas = new HashMap<ProjectRef, List<SingleVersion>>();

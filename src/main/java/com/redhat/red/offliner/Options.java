@@ -24,6 +24,9 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.ParserProperties;
 
+/**
+ * Command-line option specification, along with utility methods to parse arguments and print usage.
+ */
 public class Options
 {
 

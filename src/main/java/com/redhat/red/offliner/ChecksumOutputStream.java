@@ -15,43 +15,41 @@
  */
 package com.redhat.red.offliner;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
+/**
+ * Calculates a SHA-256 checksum while the stream it wraps is written to, for later verification.
+ */
 public final class ChecksumOutputStream
         extends FilterOutputStream
 {
+    private MessageDigest digest;
 
-    private final String checksum;
-
-    public ChecksumOutputStream( final OutputStream out, final String checksum )
+    public ChecksumOutputStream( final OutputStream out )
+            throws NoSuchAlgorithmException
     {
         super( out );
-        this.out = out;
-        this.checksum = checksum;
+        this.digest = MessageDigest.getInstance( "SHA-256" );
     }
 
     @Override
-    public void close()
+    public void write( int b )
             throws IOException
     {
-        super.close();
+        super.write( b );
+        this.digest.update( (byte) b );
+    }
 
-        PrintStream printStream = null;
-
-        try
-        {
-            printStream = new PrintStream( out );
-            printStream.print( checksum );
-        }
-        finally
-        {
-            IOUtils.closeQuietly( printStream );
-            IOUtils.closeQuietly( out );
-        }
+    public String getChecksum()
+    {
+        return Hex.encodeHexString( digest.digest() );
     }
 }

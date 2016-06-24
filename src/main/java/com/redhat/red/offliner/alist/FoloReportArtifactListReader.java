@@ -37,6 +37,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * {@link ArtifactListReader} implementation that parses JSON report files from the Indy Maven repository manager's Folo
+ * add-on, which does content activity tracking on a per-session basis. See:
+ * <a href="https://commonjava.github.io/indy/user/addons/folo/index.html">https://commonjava.github.io/indy/user/addons/folo/index.html</a>
  * Created by jdcasey on 11/20/15.
  */
 public class FoloReportArtifactListReader

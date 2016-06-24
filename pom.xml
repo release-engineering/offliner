@@ -21,10 +21,10 @@
   <parent>
     <groupId>com.redhat.rcm</groupId>
     <artifactId>redhat-releng-tools</artifactId>
-    <version>2</version>
+    <version>3</version>
   </parent>
 
-  <groupId>com.redhat.rcm.offliner</groupId>
+  <groupId>com.redhat.red.offliner</groupId>
   <artifactId>offliner</artifactId>
   <version>0.2-SNAPSHOT</version>
 
@@ -192,7 +192,7 @@
                 <appendAssemblyId>false</appendAssemblyId>
                 <archive>
                   <manifest>
-                    <mainClass>com.redhat.rcm.offliner.Main</mainClass>
+                    <mainClass>com.redhat.red.offliner.Main</mainClass>
                   </manifest>
                 </archive>
               </configuration>

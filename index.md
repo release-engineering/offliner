@@ -25,15 +25,48 @@ You can obtain the jar for the latest release [here](http://repo.maven.apache.or
 
 Offliner supports the following arguments:
 
-  * **-P (--proxy-pass) PASS** - Password for authenticating to a proxy
-  * **-U (--proxy-user) USER** - User for authenticating to a proxy
-  * **-c (--connections) INT** - Number of concurrent connections to allow for downloads *(default: 200)*
-  * **-d (--download, --dir) DIR** - Download directory *(default: ./repository)*
-  * **-h (--help)** - Print this help screen and exit
-  * **-m (--maventypemapping) MAPPING** - File containing mapping properties where key is type and value is file extension with or without classifier each mapping on a single line. List elements are separated by semicolons.
-  * **-p (--password, --repo-pass) PASS** - Authentication password, if using a repository manager URL
-  * **-r (--url, --repo-url, --base-url) REPO-URL** - Alternative URL for resolving repository artifacts (eg. repository manager URL for proxy of maven.repository.redhat.com)
-  * **-s (--mavensettings) FILE** - Path to settings.xml used when a pom is used as the source file
-  * **-u (--user, --repo-user) USER** - Authentication user, if using a repository manager URL
-  * **-x (--proxy) HOST[:PORT]** - Proxy host and port (optional) to use for downloads
+  * **-P (--proxy-pass) PASS**
+
+    Password for authenticating to a proxy
+
+  * **-U (--proxy-user) USER**
+
+    User for authenticating to a proxy
+
+  * **-c (--connections) INT**
+
+    Number of concurrent connections to allow for downloads *(default: 200)*
+
+  * **-d (--download, --dir) DIR**
+
+    Download directory *(default: ./repository)*
+
+  * **-h (--help)**
+
+    Print this help screen and exit
+
+  * **-m (--maventypemapping) MAPPING**
+
+    File containing mapping properties where key is type and value is file extension with or without classifier each mapping on a single line. List elements are separated by semicolons.
+
+  * **-p (--password, --repo-pass) PASS**
+
+    Authentication password, if using a repository manager URL
+
+  * **-r (--url, --repo-url, --base-url) REPO-URL**
+
+    Alternative URL for resolving repository artifacts *(eg. repository manager URL for proxy of maven.repository.redhat.com)*
+
+  * **-s (--mavensettings) FILE**
+
+    Path to settings.xml used when a pom is used as the source file
+
+  * **-u (--user, --repo-user) USER**
+
+    Authentication user, if using a repository manager URL
+
+  * **-x (--proxy) HOST[:PORT]**
+
+    Proxy host and port (optional) to use for downloads
+  
 

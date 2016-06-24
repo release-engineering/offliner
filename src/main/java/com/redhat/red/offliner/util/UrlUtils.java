@@ -19,6 +19,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 
+/**
+ * Utility methods for building URLs from fragments, and for parsing the port out of a URL (or using an appropriate default).
+ */
 public final class UrlUtils
 {
 
@@ -26,13 +29,14 @@ public final class UrlUtils
     {
     }
 
+    /**
+     * Given a base URL and some path fragments, build a complete, valid URL
+     * @param baseUrl The base URL
+     * @param parts the part of the path to append, with path separator characters inserted as appropriate
+     * @return The validate, concatenated URL
+     * @throws MalformedURLException In case the inputs don't form a valid URL
+     */
     public static String buildUrl( final String baseUrl, final String... parts )
-        throws MalformedURLException
-    {
-        return buildUrl( baseUrl, null, parts );
-    }
-
-    public static String buildUrl( final String baseUrl, final Map<String, String> params, final String... parts )
         throws MalformedURLException
     {
         if ( parts == null || parts.length < 1 )
@@ -66,27 +70,6 @@ public final class UrlUtils
             }
 
             urlBuilder.append( part );
-        }
-
-        if ( params != null && !params.isEmpty() )
-        {
-            urlBuilder.append( "?" );
-            boolean first = true;
-            for ( final Map.Entry<String, String> param : params.entrySet() )
-            {
-                if ( first )
-                {
-                    first = false;
-                }
-                else
-                {
-                    urlBuilder.append( "&" );
-                }
-
-                urlBuilder.append( param.getKey() )
-                          .append( "=" )
-                          .append( param.getValue() );
-            }
         }
 
         return new URL( urlBuilder.toString() ).toExternalForm();

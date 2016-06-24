@@ -9,6 +9,14 @@ Offliner accepts various types of manifest files as input, then constructs lists
 
 The end result of an Offliner execution is a directory structure you can import into your own Maven repository manager (or even just park behind your static HTTP server), and use directly from a Maven build.
 
+### Features
+
+You can go directly to feature-specific documentation below:
+
+* [File Formats](features/formats.html) - Offliner supports a several input file formats
+* [Checksum Verification and Download Avoidance](features/checksums-and-avoidance.html) - Offliner verifies downloaded and pre-existing files (and avoiding re-download of existing files)
+* [Maven Metadata Generation](features/metadata.html) - Offliner generates Maven metadata for your downloaded repository
+
 ### What Offliner Is (And What It Is Not)
 
 One of the main goals of Offliner is to be as stable as possible, avoiding the need for frequent application updates. For this reason, though it does support the Maven POM format as an input file, it does not support crawling through a graph of POM files as Maven would. This tends to be a complex process filled with edge cases and calling for quite a bit of encoded assumptions about how to resolve ambiguous situations. In order to provide the most stable application possible, Offliner avoids all of this complexity, expecting instead that the person generating the manifest file will do the work to produce a flat list of files to download.
@@ -29,47 +37,47 @@ Once downloaded, Offliner can be executed very simply:
 
 Offliner supports the following arguments:
 
-  * **-P (--proxy-pass) PASS**
-
-    Password for authenticating to a proxy
-
-  * **-U (--proxy-user) USER**
-
-    User for authenticating to a proxy
-
-  * **-c (--connections) INT**
+  * `-c, --connections INT`
 
     Number of concurrent connections to allow for downloads *(default: 200)*
 
-  * **-d (--download, --dir) DIR**
+  * `-d, --download, --dir DIR`
 
     Download directory *(default: ./repository)*
 
-  * **-h (--help)**
+  * `-h, --help`
 
     Print this help screen and exit
 
-  * **-m (--maventypemapping) MAPPING**
+  * `-m, --maventypemapping MAPPING`
 
     File containing mapping properties where key is type and value is file extension with or without classifier each mapping on a single line. List elements are separated by semicolons.
 
-  * **-p (--password, --repo-pass) PASS**
+  * `-p, --password, --repo-pass PASS`
 
     Authentication password, if using a repository manager URL
 
-  * **-r (--url, --repo-url, --base-url) REPO-URL**
+  * `-P, --proxy-pass PASS`
+
+    Password for authenticating to a proxy
+
+  * `-r, --url, --repo-url, --base-url REPO-URL`
 
     Alternative URL for resolving repository artifacts *(eg. repository manager URL for proxy of maven.repository.redhat.com)*
 
-  * **-s (--mavensettings) FILE**
+  * `-s, --mavensettings FILE`
 
     Path to settings.xml used when a pom is used as the source file
 
-  * **-u (--user, --repo-user) USER**
+  * `-u, --user, --repo-user USER`
 
     Authentication user, if using a repository manager URL
 
-  * **-x (--proxy) HOST[:PORT]**
+  * `-U, --proxy-user USER`
+
+    User for authenticating to a proxy
+
+  * `-x, --proxy HOST[:PORT]`
 
     Proxy host and port (optional) to use for downloads
 

@@ -58,13 +58,7 @@ import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -102,6 +96,8 @@ public class Main
     private List<ArtifactListReader> artifactListReaders;
 
     private List<String> baseUrls;
+
+    private final static List<String> DEFAULT_URLS = Arrays.asList( Options.DEFAULT_REPO_URL, Options.CENTRAL_REPO_URL  );
 
     public Main( final Options opts )
             throws MalformedURLException
@@ -285,15 +281,9 @@ public class Main
             if ( baseUrls == null || baseUrls.isEmpty() )
             {
                 baseUrls = artifactList.getRepositoryUrls();
-                if ( baseUrls == null )
+                if ( baseUrls == null || baseUrls.isEmpty() )
                 {
-                    baseUrls = new ArrayList<>();
-                }
-
-                if ( baseUrls.isEmpty() )
-                {
-                    baseUrls.add( Options.DEFAULT_REPO_URL );
-                    baseUrls.add( Options.CENTRAL_REPO_URL );
+                    baseUrls = DEFAULT_URLS;
                 }
             }
 
@@ -547,22 +537,18 @@ public class Main
             baseUrls = new ArrayList<>();
         }
 
-        if ( baseUrls.isEmpty() )
-        {
-            baseUrls.add( Options.DEFAULT_REPO_URL );
-            baseUrls.add( Options.CENTRAL_REPO_URL );
-        }
+        List<String> repoUrls = ( baseUrls.isEmpty() ? DEFAULT_URLS : baseUrls );
 
-        System.out.println( "Planning download from:\n  " + StringUtils.join( baseUrls, "\n  " ) );
+        System.out.println( "Planning download from:\n  " + StringUtils.join( repoUrls, "\n  " ) );
 
-        for ( String baseUrl : baseUrls )
+        for ( String repoUrl : repoUrls )
         {
-            if ( baseUrl != null )
+            if ( repoUrl != null )
             {
                 final String user = opts.getUser();
                 if ( user != null )
                 {
-                    final URL u = new URL( baseUrl );
+                    final URL u = new URL( repoUrl );
                     final AuthScope as = new AuthScope( u.getHost(), UrlUtils.getPort( u ) );
 
                     creds.setCredentials( as, new UsernamePasswordCredentials( user, opts.getPassword() ) );

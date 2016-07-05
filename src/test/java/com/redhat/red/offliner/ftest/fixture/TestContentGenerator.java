@@ -20,9 +20,7 @@ import com.redhat.red.offliner.folo.TrackedContentEntryDTO;
 import com.redhat.red.offliner.util.UrlUtils;
 import com.redhat.red.offliner.alist.PlaintextArtifactListReader;
 import org.apache.commons.io.IOUtils;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.Parent;
+import org.apache.maven.model.*;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 
 import java.io.IOException;
@@ -173,6 +171,25 @@ public class TestContentGenerator
     public Dependency newDependency( String type, String scope )
     {
         return newDependency( type, null, scope );
+    }
+
+    public Repository newRepository( String id, String url )
+    {
+        Repository repo = new Repository();
+        repo.setId( id );
+        repo.setUrl( url );
+
+        RepositoryPolicy releasesPolicy = new RepositoryPolicy();
+        RepositoryPolicy snapshotsPolicy = new RepositoryPolicy();
+
+        releasesPolicy.setEnabled( true );
+        snapshotsPolicy.setEnabled( true );
+
+        repo.setReleases( releasesPolicy );
+        repo.setSnapshots( snapshotsPolicy );
+
+        return repo;
+
     }
 
     public TrackedContentEntryDTO newRemoteContentEntry( StoreKey key, String type, String originBaseUri, byte[] content )

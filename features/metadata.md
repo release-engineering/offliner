@@ -1,4 +1,5 @@
 ---
+title: "Maven Metadata Generation"
 ---
 
 ### Overview

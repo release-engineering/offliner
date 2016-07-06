@@ -138,6 +138,7 @@ pre, code {
 
 pre {
   padding: 10px;
+  white-space: pre;
   overflow: auto;
 }
 

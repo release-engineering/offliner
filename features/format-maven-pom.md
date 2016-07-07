@@ -6,6 +6,10 @@ title: "Maven POM Input Format"
 
 If you build with Apache Maven, you're already familiar with this file format. The Maven POM has many sections and configuration options, but Offliner will only use two: `<repositories/>` and `<dependencies/>`. Simply create a Maven POM file containing repository entries for any additional repository URLs you wish to include in the download (https://repo.maven.apache.org/maven2 and https://maven.repository.redhat.com/ga are included by default). Then, add a dependency section containing the artifacts you wish to have downloaded. Keep in mind that for every artifact listed, Offliner will also attempt to download the corresponding `.pom` file.
 
+### WARNING: No Checksums Validation
+
+Because checksums are handled in associated files within Maven (see more information about this below), Offliner doesn't have a guaranteed 1:1 mapping of checksums to downloadable paths. Additionally, Maven repositories typically don't include SHA-256 checksum files. For these reasons, Offliner will **not** validate any of the downloads originating from a Maven POM file.
+
 ### Example POM
 
 Here's a basic example of a POM that Offliner could read for a list of downloadable paths:

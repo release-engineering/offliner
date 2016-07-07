@@ -7,8 +7,8 @@ title: "Offliner Input File Formats"
 Offliner currently supports three manifest-file formats:
 
 * [Maven POM](format-maven-pom.html) (`pom.xml` or `*.pom`)
-* Indy Folo Tracking Report JSON (`*.json`)
-* Plaintext or Comma-Separated Values (any other file)
+* [Indy Folo Tracking Report JSON](format-folo.html) (`*.json`)
+* [Plaintext or Comma-Separated Values](format-plain.html) (any other file)
 
 
 #### Indy Folo Tracking Reports

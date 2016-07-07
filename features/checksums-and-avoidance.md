@@ -6,7 +6,7 @@ title: "Checksums and Download Avoidance"
 
 Currently, two of the three Offliner manifest-file input formats (plaintext and Folo) allow you to specify a checksum for each path. If provided, these checksums will be used to verify the target repository content.
 
-**TIP: All checksums are SHA-256**
+**TIP: Offliner only works with SHA-256 checksums.**
 
 In addition, Offliner respects the content that already exists in the target repository directory. If a path listed in the manifest file already exists in the target directory, Offliner will try to use it instead of re-downloading.
 

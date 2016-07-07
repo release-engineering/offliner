@@ -50,11 +50,20 @@ public class PlaintextArtifactListReader implements ArtifactListReader
 
         for ( String c : contents )
         {
-            String[] cArr = c.split( "," );
+            c = c.trim();
+            if ( c.startsWith( "#" ) || c.startsWith( "//" ) || c.startsWith( ";" ) )
+            {
+                //common comment types.
+                continue;
+            }
+
+            // handle potential for spaces around the comma.
+            String[] cArr = c.split( "\\s*,\\s*" );
             if ( cArr.length <= 1 )
             {
                 continue;
             }
+            
             paths.add( cArr[1] );
             checksums.put( cArr[1], cArr[0] );
         }

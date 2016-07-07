@@ -11,11 +11,3 @@ Offliner currently supports three manifest-file formats:
 * [Plaintext or Comma-Separated Values](format-plain.html) (any other file)
 
 
-#### Indy Folo Tracking Reports
-
-**TODO.**
-
-#### Plaintext or Comma-Separated Values
-
-**TODO.**
-

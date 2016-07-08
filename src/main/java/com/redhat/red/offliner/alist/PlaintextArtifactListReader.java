@@ -63,7 +63,7 @@ public class PlaintextArtifactListReader implements ArtifactListReader
             {
                 continue;
             }
-            
+
             paths.add( cArr[1] );
             checksums.put( cArr[1], cArr[0] );
         }

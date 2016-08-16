@@ -49,6 +49,8 @@ import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.atlas.ident.util.ArtifactPathInfo;
 import org.commonjava.maven.atlas.ident.version.SingleVersion;
 import org.kohsuke.args4j.CmdLineException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -76,6 +78,10 @@ import static org.apache.commons.codec.digest.DigestUtils.sha256Hex;
 public class Main
 {
     private static final String SEP = "---------------------------------------------------------------";
+
+    public static final String SHA_SUFFIX = ".sha1";
+
+    public static final String MD5_SUFFIX = ".md5";
 
     private final Options opts;
 
@@ -302,6 +308,8 @@ public class Main
             return 0;
         }
 
+        patchPaths( paths );
+
         int count = 0;
         for ( final String path : paths )
         {
@@ -313,6 +321,60 @@ public class Main
         }
 
         return count;
+    }
+
+    /**
+     * Sort through the given paths from the {@link ArtifactList} and match up all non-checksum paths to <b>BOTH</b>
+     * of its associated checksum paths (sha and md5). If one or both are missing, add them to the paths list.
+     *
+     * @param paths
+     */
+    protected void patchPaths( List<String> paths )
+    {
+        Logger logger = LoggerFactory.getLogger( getClass() );
+
+        Set<String> nonChecksum = new HashSet<>();
+        Map<String, String> pathToSha = new HashMap<>();
+        Map<String, String> pathToMd5 = new HashMap<>();
+        paths.forEach( (path)->{
+            if ( path.endsWith( SHA_SUFFIX ) )
+            {
+                String base = path.substring( 0, path.length() - SHA_SUFFIX.length() );
+                logger.trace( "For base path: '{}', found SHA checksum: '{}'", base, path );
+                pathToSha.put( base, path );
+            }
+            else if ( path.endsWith( MD5_SUFFIX ) )
+            {
+                String base = path.substring( 0, path.length() - MD5_SUFFIX.length() );
+                logger.trace( "For base path: '{}', found MD-5 checksum: '{}'", base, path );
+                pathToMd5.put( base, path );
+            }
+            else
+            {
+                logger.trace( "Found base path: '{}'", path );
+                nonChecksum.add( path );
+            }
+        } );
+
+        nonChecksum.forEach( ( path ) -> {
+            logger.trace( "Checking for checksum paths associated with: '{}'", path );
+
+            logger.trace( "In SHA1 mappings:\n\n{}", pathToSha );
+            if ( !pathToSha.containsKey( path ) )
+            {
+                String sha = path + SHA_SUFFIX;
+                logger.trace( "PATCH: Adding sha file: '{}'", sha );
+                paths.add( sha );
+            }
+
+            logger.trace( "In MD5 mappings:\n\n{}", pathToMd5 );
+            if ( !pathToMd5.containsKey( path ) )
+            {
+                String md5 = path + MD5_SUFFIX;
+                logger.trace( "PATCH: Adding md5 file: '{}'", md5 );
+                paths.add( md5 );
+            }
+        } );
     }
 
     /**
@@ -486,7 +548,7 @@ public class Main
      * baseUrls. If specified, configures the HTTP proxy and username/password for authentication.
      * @throws MalformedURLException In case an invalid {@link URL} is given as a baseUrl.
      */
-    private void init()
+    protected void init()
             throws MalformedURLException
     {
         int cpus = Runtime.getRuntime().availableProcessors();

@@ -24,6 +24,8 @@ import org.junit.Test;
 import java.io.File;
 import java.util.Collections;
 
+import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
+import static org.apache.commons.codec.digest.DigestUtils.sha1Hex;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -57,6 +59,8 @@ public class SinglePlaintextDownloadFTest
         // Register the generated content by writing it to the path within the repo server's dir structure.
         // This way when the path is requested it can be downloaded instead of returning a 404.
         server.registerContent( path, content );
+        server.registerContent( path + Main.SHA_SUFFIX, sha1Hex( content ) );
+        server.registerContent( path + Main.MD5_SUFFIX, md5Hex( content ) );
 
         // Write the plaintext file we'll use as input.
         File plaintextList = temporaryFolder.newFile( "artifact-list." + getClass().getSimpleName() + ".txt" );
@@ -75,8 +79,8 @@ public class SinglePlaintextDownloadFTest
         // run `new Main(opts).run()` and return the Main instance so we can query it for errors, etc.
         Main finishedMain = run( opts );
 
-        assertThat( "Wrong number of downloads logged. Should have been 1.", finishedMain.getDownloaded(),
-                    equalTo( 1 ) );
+        assertThat( "Wrong number of downloads logged. Should have been 3 including checksums.", finishedMain.getDownloaded(),
+                    equalTo( 3 ) );
         assertThat( "Errors should be empty!", finishedMain.getErrors().isEmpty(), equalTo( true ) );
 
         File downloaded = new File( downloads, path );

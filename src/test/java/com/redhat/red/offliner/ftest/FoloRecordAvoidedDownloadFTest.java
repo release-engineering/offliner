@@ -29,6 +29,8 @@ import org.junit.Test;
 import java.io.File;
 import java.util.Collections;
 
+import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
+import static org.apache.commons.codec.digest.DigestUtils.sha1Hex;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -66,6 +68,8 @@ public class FoloRecordAvoidedDownloadFTest
         // Register the generated content by writing it to the path within the repo server's dir structure.
         // This way when the path is requested it can be downloaded instead of returning a 404.
         server.registerContent( path, content );
+        server.registerContent( path + Main.SHA_SUFFIX, sha1Hex( content ) );
+        server.registerContent( path + Main.MD5_SUFFIX, md5Hex( content ) );
 
         // Write the plaintext file we'll use as input.
         File foloRecord = temporaryFolder.newFile( "folo." + getClass().getSimpleName() + ".json" );
@@ -82,13 +86,13 @@ public class FoloRecordAvoidedDownloadFTest
         opts.setLocations( Collections.singletonList( foloRecord.getAbsolutePath() ) );
 
         Main firstMain = run( opts );
-        assertThat( "Wrong number of downloads logged. Should have been 1.", firstMain.getDownloaded(), equalTo( 1 ) );
+        assertThat( "Wrong number of downloads logged. Should have been 3 with checksum files included.", firstMain.getDownloaded(), equalTo( 3 ) );
 
         //re-run to test the function of avoiding re-downloading existing files
         Main secondMain = run( opts );
         assertThat( "Wrong number of downloads logged. Should have been 0.", secondMain.getDownloaded(), equalTo( 0 ) );
         assertThat( "Wrong number of avoided downloads logged. Should have been 1", secondMain.getAvoided(),
-                    equalTo( 1 ) );
+                    equalTo( 3 ) );
         assertThat( "Errors should be empty!", secondMain.getErrors().isEmpty(), equalTo( true ) );
     }
 }

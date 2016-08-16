@@ -29,6 +29,8 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.Collections;
 
+import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
+import static org.apache.commons.codec.digest.DigestUtils.sha1Hex;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -63,12 +65,20 @@ public class MavenMetadataGenerateFTest
         // Register the generated content by writing it to the path within the repo server's dir structure.
         // This way when the path is requested it can be downloaded instead of returning a 404.
         server.registerContent( path, content );
+        server.registerContent( path + Main.SHA_SUFFIX, sha1Hex( content ) );
+        server.registerContent( path + Main.MD5_SUFFIX, md5Hex( content ) );
 
         // All deps imply an accompanying POM file when using the POM artifact list reader, so we have to register one of these too.
         Model pomDep = contentGenerator.newPomFor( dep );
         String pomPath = contentGenerator.pathOf( pomDep );
+        String md5Path = pomPath + Main.MD5_SUFFIX;
+        String shaPath = pomPath + Main.SHA_SUFFIX;
 
-        server.registerContent( pomPath, contentGenerator.pomToString( pomDep ) );
+        String pomStr = contentGenerator.pomToString( pomDep );
+
+        server.registerContent( pomPath, pomStr );
+        server.registerContent( md5Path, md5Hex( pomStr ) );
+        server.registerContent( shaPath, sha1Hex( pomStr ) );
 
         // Write the plaintext file we'll use as input.
         File pomFile = temporaryFolder.newFile( getClass().getSimpleName() + ".pom" );

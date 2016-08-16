@@ -19,6 +19,7 @@ import com.redhat.red.offliner.folo.StoreKey;
 import com.redhat.red.offliner.folo.TrackedContentEntryDTO;
 import com.redhat.red.offliner.util.UrlUtils;
 import com.redhat.red.offliner.alist.PlaintextArtifactListReader;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.maven.model.*;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
@@ -448,5 +449,4 @@ public class TestContentGenerator
 
         return sw.toString();
     }
-
 }

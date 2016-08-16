@@ -27,6 +27,8 @@ import org.junit.Test;
 import java.io.File;
 import java.util.Collections;
 
+import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
+import static org.apache.commons.codec.digest.DigestUtils.sha1Hex;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -67,17 +69,25 @@ public class SinglePOMRepoDownloadFTest extends AbstractOfflinerFunctionalTest
         // Register the generated content by writing it to the path within the repo server's dir structure.
         // This way when the path is requested it can be downloaded instead of returning a 404.
         server.registerContent( path, content );
+        server.registerContent( path + Main.SHA_SUFFIX, sha1Hex( content ) );
+        server.registerContent( path + Main.MD5_SUFFIX, md5Hex( content ) );
 
         // All deps imply an accompanying POM file when using the POM artifact list reader, so we have to register one of these too.
         Model pomDep = contentGenerator.newPomFor( dep );
         String pomPath = contentGenerator.pathOf( pomDep );
+        String md5Path = pomPath + Main.MD5_SUFFIX;
+        String shaPath = pomPath + Main.SHA_SUFFIX;
 
-        server.registerContent( pomPath, contentGenerator.pomToString( pomDep ));
+        String pomStr = contentGenerator.pomToString( pomDep );
 
-        // Write the POM file we'll use as input
+        server.registerContent( pomPath, pomStr );
+        server.registerContent( md5Path, md5Hex( pomStr ) );
+        server.registerContent( shaPath, sha1Hex( pomStr ) );
+
+        // Write the plaintext file we'll use as input.
         File pomFile = temporaryFolder.newFile( getClass().getSimpleName() + ".pom" );
 
-        FileUtils.write( pomFile, contentGenerator.pomToString( pom ));
+        FileUtils.write( pomFile, contentGenerator.pomToString( pom ) );
 
         Options opts = new Options();
 
@@ -90,8 +100,8 @@ public class SinglePOMRepoDownloadFTest extends AbstractOfflinerFunctionalTest
         // run `new Main(opts).run()` and return the Main instance so we can query it for errors, etc.
         Main finishedMain = run( opts );
 
-        assertThat( "Wrong number of downloads logged. Should have been 2 (declared jar + its corresponding POM).",
-                    finishedMain.getDownloaded(), equalTo ( 2 ) );
+        assertThat( "Wrong number of downloads logged. Should have been 6 (declared jar + its corresponding POM + 2 checksums each).",
+                    finishedMain.getDownloaded(), equalTo ( 6 ) );
         assertThat( "Errors should be empty!", finishedMain.getErrors().isEmpty(), equalTo( true ) );
 
         File downloaded = new File( downloads, path );

@@ -29,6 +29,8 @@ import org.junit.Test;
 import java.io.File;
 import java.util.Collections;
 
+import static org.apache.commons.codec.digest.DigestUtils.md5Hex;
+import static org.apache.commons.codec.digest.DigestUtils.sha1Hex;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -61,6 +63,8 @@ public class ChecksumMismatchFTest
         // Register the generated content by writing it to the path within the repo server's dir structure.
         // This way when the path is requested it can be downloaded instead of returning a 404.
         server.registerContent( path, downloadedContent );
+        server.registerContent( path + Main.SHA_SUFFIX, sha1Hex( downloadedContent ) );
+        server.registerContent( path + Main.MD5_SUFFIX, md5Hex( downloadedContent ) );
 
         // Write the plaintext file we'll use as input.
         File foloRecord = temporaryFolder.newFile( "folo." + getClass().getSimpleName() + ".json" );
@@ -77,7 +81,7 @@ public class ChecksumMismatchFTest
         opts.setLocations( Collections.singletonList( foloRecord.getAbsolutePath() ) );
 
         Main main = run( opts );
-        assertThat( "Wrong number of downloads logged. Should have been 0.", main.getDownloaded(), equalTo( 0 ) );
+        assertThat( "Wrong number of downloads logged. Should have been just the checksum files.", main.getDownloaded(), equalTo( 2 ) );
         assertThat( "Checksum mismatch should have resulted in an error", main.getErrors().isEmpty(),
                     equalTo( false ) );
 

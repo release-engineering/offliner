@@ -29,12 +29,14 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CookieStore;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.AbstractExecutionAwareRequest;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.routing.HttpRoutePlanner;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -60,7 +62,14 @@ import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -87,7 +96,7 @@ public class Main
 
     private CloseableHttpClient client;
 
-    private HttpClientContext contextPrototype;
+    private CookieStore cookieStore;
 
     private ExecutorService executorService;
 
@@ -459,7 +468,9 @@ public class Main
 
                     System.out.println( ">>>Downloading: " + url );
 
-                    final HttpClientContext context = new HttpClientContext( contextPrototype );
+                    final HttpClientContext context = new HttpClientContext();
+                    context.setCookieStore( cookieStore );
+
                     final HttpGet request = new HttpGet( url );
                     try (CloseableHttpResponse response = client.execute( request, context ))
                     {
@@ -590,8 +601,7 @@ public class Main
 
         final CredentialsProvider creds = new BasicCredentialsProvider();
 
-        contextPrototype = HttpClientContext.create();
-        contextPrototype.setCredentialsProvider( creds );
+        cookieStore = new BasicCookieStore();
 
         baseUrls = opts.getBaseUrls();
         if ( baseUrls == null )

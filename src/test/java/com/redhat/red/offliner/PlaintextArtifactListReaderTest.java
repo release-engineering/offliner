@@ -136,7 +136,7 @@ public class PlaintextArtifactListReaderTest
 
         assertNull( "ArctifactList should be null for an empty input file.", artifactList0 );
         assertThat( "Wrong size of checksum map. Should have been 0 for an input file with only one column.",
-                    artifactList1.getChecksums().size(), equalTo( 0 ) );
+                    artifactList1.getPaths().contains( actualPath ), equalTo( true ) );
         assertThat( "Wrong checksum value, not matched with the path", artifactList2.getChecksums().get( actualPath ),
                     equalTo( matcherChecksum ) );
         assertThat( "Wrong checksum value, not matched with the path", artifactList3.getChecksums().get( actualPath ),

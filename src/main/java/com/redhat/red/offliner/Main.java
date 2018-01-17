@@ -80,6 +80,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.commons.codec.digest.DigestUtils.sha256Hex;
+import static org.apache.commons.lang.StringUtils.isBlank;
 
 /**
  * Entry point to Offliner, this class is responsible for orchestrating the entire process.
@@ -421,6 +422,7 @@ public class Main
     private Callable<DownloadResult> newDownloader( final List<String> baseUrls, final String path,
                                                     final Map<String, String> checksums )
     {
+        final Logger logger = LoggerFactory.getLogger( getClass() );
         return () -> {
             final String name = Thread.currentThread().getName();
             Thread.currentThread().setName( "download--" + path );
@@ -484,10 +486,10 @@ public class Main
                                 if ( checksums != null )
                                 {
                                     String checksum = checksums.get( path );
-                                    if ( checksum != null && !checksum.equalsIgnoreCase( out.getChecksum() ) )
+                                    if ( checksum != null && !isBlank( checksum ) && !checksum.equalsIgnoreCase( out.getChecksum() ) )
                                     {
                                         return DownloadResult.error( path, new IOException(
-                                                "Checksum mismatch on file: " + path ) );
+                                                "Checksum mismatch on file: " + path + " (calculated: '" + out.getChecksum() + "'; expected: '" + checksum + "')" ) );
                                     }
                                 }
                             }
@@ -526,6 +528,11 @@ public class Main
                     }
                     catch ( final IOException e )
                     {
+                        if ( logger.isTraceEnabled() )
+                        {
+                            logger.error( "Download failed for: " + url, e );
+                        }
+
                         return DownloadResult.error( path, new IOException( "URL: " + url + " failed.", e ) );
                     }
                     finally

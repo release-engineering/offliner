@@ -59,13 +59,19 @@ public class PlaintextArtifactListReader implements ArtifactListReader
 
             // handle potential for spaces around the comma.
             String[] cArr = c.split( "\\s*,\\s*" );
-            if ( cArr.length <= 1 )
+            if ( cArr.length == 0 )
             {
                 continue;
             }
-
-            paths.add( cArr[1] );
-            checksums.put( cArr[1], cArr[0] );
+            else if ( cArr.length == 1 )
+            {
+                paths.add(cArr[0]);
+            }
+            else
+            {
+                paths.add( cArr[1] );
+                checksums.put( cArr[1], cArr[0] );
+            }
         }
 
         ArtifactList result = new ArtifactList( paths, Collections.emptyList(), checksums );

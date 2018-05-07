@@ -569,8 +569,8 @@ public class Main
     protected void init()
             throws MalformedURLException
     {
-        int cpus = Runtime.getRuntime().availableProcessors();
-        executorService = Executors.newFixedThreadPool( cpus * 2, ( final Runnable r ) -> {
+        int threads = opts.getThreads();
+        executorService = Executors.newFixedThreadPool( threads, ( final Runnable r ) -> {
             //        executorService = Executors.newCachedThreadPool( ( final Runnable r ) -> {
             final Thread t = new Thread( r );
             t.setDaemon( true );

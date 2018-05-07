@@ -40,6 +40,8 @@ public class Options
 
     private static final File DEFAULT_DOWNLOADS = new File( "repository" );
 
+    private static final Integer DEFAULT_THREADS = 4 * Runtime.getRuntime().availableProcessors();
+
     @Option( name = "-r", aliases = { "--url", "--repo-url", "--base-url" }, metaVar = "REPO-URL", usage = "Alternative URL for resolving repository artifacts (eg. repository manager URL for proxy of maven.repository.redhat.com)" )
     private List<String> baseUrls;
 
@@ -71,6 +73,9 @@ public class Options
         + "where key is type and value is file extension with or without classifier each mapping on a single line. List elements"
         + " are separated by semicolons." )
     private String typeMapping;
+
+    @Option( name = "-T", aliases = { "--threads" }, metaVar = "INT", usage = "Number of concurrent threads to allow for downloads (default: 4xCPU)" )
+    private Integer threads;
 
     @Option( name = "-h", aliases = { "--help" }, help = true, usage = "Print this help screen and exit" )
     private boolean help;
@@ -233,4 +238,13 @@ public class Options
         this.typeMapping = typeMapping;
     }
 
+    public Integer getThreads()
+    {
+        return threads == null ? DEFAULT_THREADS : threads;
+    }
+
+    public void setThreads( final Integer threads )
+    {
+        this.threads = threads;
+    }
 }

@@ -16,12 +16,10 @@
 package com.redhat.red.offliner;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.io.IOUtils;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -41,11 +39,12 @@ public final class ChecksumOutputStream
     }
 
     @Override
-    public void write( int b )
-            throws IOException
-    {
-        super.write( b );
-        this.digest.update( (byte) b );
+    public void write(byte b[], int off, int len) throws IOException {
+        if ((off | len | (b.length - (len + off)) | (off + len)) < 0) {
+            throw new IndexOutOfBoundsException();
+        }
+        out.write(b, off, len);
+        digest.update(b, off, len);
     }
 
     public String getChecksum()

@@ -26,7 +26,7 @@
 
   <groupId>com.redhat.red.offliner</groupId>
   <artifactId>offliner</artifactId>
-  <version>1.6</version>
+  <version>1.7-SNAPSHOT</version>
 
   <name>Offliner Maven Repository Downloader</name>
   <url>https://github.com/release-engineering/offliner</url>
@@ -36,7 +36,7 @@
     <connection>scm:git:https://github.com/release-engineering/offliner.git</connection>
     <developerConnection>scm:git:git@github.com:release-engineering/offliner.git</developerConnection>
     <url>http://github.com/release-engineering/offliner</url>
-    <tag>offliner-1.6</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <properties>

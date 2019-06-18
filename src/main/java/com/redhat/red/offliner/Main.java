@@ -487,18 +487,16 @@ public class Main
                             try (ChecksumOutputStream out = new ChecksumOutputStream( new FileOutputStream( part )))
                             {
                                 IOUtils.copy( response.getEntity().getContent(), out );
-
                                 if ( checksums != null )
                                 {
                                     String checksum = checksums.get( path );
-                                    if ( checksum != null && !isBlank( checksum ) && !checksum.equalsIgnoreCase( out.getChecksum() ) )
+                                    if ( checksum != null && !isBlank( checksum ) && !out.getChecksum().isMatch( checksum ) )
                                     {
                                         return DownloadResult.error( path, new IOException(
                                                 "Checksum mismatch on file: " + path + " (calculated: '" + out.getChecksum() + "'; expected: '" + checksum + "')" ) );
                                     }
                                 }
                             }
-
                             part.renameTo( target );
                             return DownloadResult.success( baseUrl, path );
                         }

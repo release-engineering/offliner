@@ -21,7 +21,7 @@
   <parent>
     <groupId>com.redhat.rcm</groupId>
     <artifactId>redhat-releng-tools</artifactId>
-    <version>3</version>
+    <version>6</version>
   </parent>
 
   <groupId>com.redhat.red.offliner</groupId>

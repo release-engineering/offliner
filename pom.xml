@@ -19,30 +19,30 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.redhat.rcm</groupId>
-    <artifactId>redhat-releng-tools</artifactId>
-    <version>6</version>
+    <groupId>org.commonjava</groupId>
+    <artifactId>commonjava</artifactId>
+    <version>16</version>
   </parent>
 
-  <groupId>com.redhat.red.offliner</groupId>
+  <groupId>org.commonjava.offliner</groupId>
   <artifactId>offliner</artifactId>
-  <version>1.8-SNAPSHOT</version>
+  <version>2.0-SNAPSHOT</version>
 
   <name>Offliner Maven Repository Downloader</name>
-  <url>https://github.com/release-engineering/offliner</url>
+  <url>https://github.com/Commonjava/offliner</url>
 
   <inceptionYear>2015</inceptionYear>
   <scm>
-    <connection>scm:git:https://github.com/release-engineering/offliner.git</connection>
-    <developerConnection>scm:git:git@github.com:release-engineering/offliner.git</developerConnection>
-    <url>http://github.com/release-engineering/offliner</url>
+    <connection>scm:git:https://github.com/Commonjava/offliner.git</connection>
+    <developerConnection>scm:git:git@github.com:Commonjava/offliner.git</developerConnection>
+    <url>http://github.com/Commonjava/offliner</url>
     <tag>HEAD</tag>
   </scm>
 
   <properties>
     <version.org.apache.maven>3.3.3</version.org.apache.maven>
-    <httpcoreVersion>4.4.6</httpcoreVersion>
-    <httpclientVersion>4.5.3</httpclientVersion>
+    <httpcoreVersion>4.4.9</httpcoreVersion>
+    <httpclientVersion>4.5.9</httpclientVersion>
     <jacksonVersion>2.10.1</jacksonVersion>
     <enforceManagedDeps>false</enforceManagedDeps>
 
@@ -60,6 +60,11 @@
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>org.commonjava.indy</groupId>
+      <artifactId>indy-folo-model-java</artifactId>
+      <version>1.9.9</version>
+    </dependency>
     <dependency>
       <groupId>org.commonjava.maven.atlas</groupId>
       <artifactId>atlas-identities</artifactId>
@@ -212,7 +217,7 @@
                 <appendAssemblyId>false</appendAssemblyId>
                 <archive>
                   <manifest>
-                    <mainClass>com.redhat.red.offliner.Main</mainClass>
+                    <mainClass>org.commonjava.offliner.cli.Main</mainClass>
                   </manifest>
                 </archive>
               </configuration>

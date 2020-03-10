@@ -29,7 +29,7 @@ While Offliner is intended to be used to produce repositories which can be hoste
 
 You can obtain the jar for the latest release here:
 
-[http://repo.maven.apache.org/maven2/com/redhat/red/offliner/offliner/](http://repo.maven.apache.org/maven2/com/redhat/red/offliner/offliner/)
+[https://repo.maven.apache.org/maven2/com/redhat/red/offliner/offliner/](https://repo.maven.apache.org/maven2/com/redhat/red/offliner/offliner/)
 
 Once downloaded, Offliner can be executed very simply:
 

@@ -199,6 +199,11 @@ public class Offliner
                     runResult.addAvoided();
                     logger.debug( "<<<Avoided: {}\n", result.getPath() );
                 }
+                else if ( result.getWarn() != null )
+                {
+                    runResult.addWarn( result.getPath(), result.getWarn() );
+                    logger.debug( "<<<WARN: {}\n", result.getPath() );
+                }
                 else
                 {
                     runResult.addError( result.getPath(), result.getError() );
@@ -395,6 +400,15 @@ public class Offliner
                         }
                         else if ( statusCode == 404 )
                         {
+                            if ( path.endsWith( Offliner.MD5_SUFFIX ) || path.endsWith( Offliner.SHA_SUFFIX ) )
+                            {
+                                logger.warn( "<<<Not Found: " + url );
+                                if ( reposRemaining == 0 )
+                                {
+                                    return DownloadResult.warn( path, "WARN: downloading path " + path + " was not "
+                                                    + "found in any of the provided repositories." );
+                                }
+                            }
                             logger.error( "<<<Not Found: " + url );
                             if ( reposRemaining == 0 )
                             {

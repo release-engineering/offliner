@@ -30,29 +30,37 @@ public class DownloadResult
 
     private Exception error;
 
+    private String warn;
+
     private boolean avoided;
 
-    public DownloadResult( String originUrl, String path, Exception error, boolean avoided )
+    public DownloadResult( String originUrl, String path, Exception error, String warn, boolean avoided )
     {
         this.originUrl = originUrl;
         this.path = path;
         this.error = error;
+        this.warn = warn;
         this.avoided = avoided;
     }
 
     public static DownloadResult success( String originUrl, String path )
     {
-        return new DownloadResult( originUrl, path, null, false );
+        return new DownloadResult( originUrl, path, null, null, false );
     }
 
     public static DownloadResult error( String path, Exception error )
     {
-        return new DownloadResult( null, path, error, false );
+        return new DownloadResult( null, path, error, null, false );
+    }
+
+    public static DownloadResult warn( String path, String warn)
+    {
+        return new DownloadResult( null, path, null, warn, false );
     }
 
     public static DownloadResult avoid( String path, boolean avoided )
     {
-        return new DownloadResult( null, path, null, avoided );
+        return new DownloadResult( null, path, null, null, avoided );
     }
 
     /**
@@ -60,7 +68,7 @@ public class DownloadResult
      */
     public boolean isSuccess()
     {
-        return error == null && !avoided;
+        return error == null && warn == null && !avoided;
     }
 
     public boolean isAvoided()
@@ -82,4 +90,6 @@ public class DownloadResult
     {
         return error;
     }
+
+    public String getWarn() { return warn; }
 }

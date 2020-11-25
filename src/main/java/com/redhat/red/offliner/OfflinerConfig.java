@@ -6,6 +6,8 @@ import java.io.File;
 
 public class OfflinerConfig
 {
+    private File headerFile;
+
     private File mavenSettingsXml;
 
     private String mavenTypeMapping;
@@ -16,9 +18,10 @@ public class OfflinerConfig
 
     private String proxy;
 
-    private OfflinerConfig( final File mavenSettingsXml, final String mavenTypeMapping, final int threads,
+    private OfflinerConfig( final File headerFile, final File mavenSettingsXml, final String mavenTypeMapping, final int threads,
                            final int connections, final String proxy )
     {
+        this.headerFile =  headerFile;
         this.mavenSettingsXml = mavenSettingsXml;
         this.mavenTypeMapping = mavenTypeMapping;
         this.threads = threads;
@@ -46,6 +49,10 @@ public class OfflinerConfig
         return proxy;
     }
 
+    public File getHeaderFile() {
+        return headerFile;
+    }
+
     public File getMavenSettingsXml()
     {
         return mavenSettingsXml;
@@ -58,6 +65,8 @@ public class OfflinerConfig
 
     public static class Builder
     {
+        private File headerFile;
+
         private File mavenSettingsXml;
 
         private String mavenTypeMapping;
@@ -70,6 +79,12 @@ public class OfflinerConfig
 
         private Builder()
         {
+        }
+
+        public Builder withHeaderFile( final File headerFile )
+        {
+            this.headerFile = headerFile;
+            return this;
         }
 
         public Builder withMavenSettingsXml( final File mavenSettingsXml )
@@ -104,11 +119,12 @@ public class OfflinerConfig
 
         public OfflinerConfig build()
         {
-            return new OfflinerConfig( mavenSettingsXml, mavenTypeMapping, threads, connections, proxy );
+            return new OfflinerConfig( headerFile, mavenSettingsXml, mavenTypeMapping, threads, connections, proxy );
         }
 
         public Builder fromOptions( final Options opts )
         {
+            this.headerFile = opts.getHeaderFile();
             this.mavenSettingsXml = opts.getSettingsXml();
             this.mavenTypeMapping = opts.getTypeMapping();
             this.threads = opts.getThreads();

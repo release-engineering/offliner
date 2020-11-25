@@ -42,6 +42,12 @@ public class Options
 
     private static final Integer DEFAULT_THREADS = 4 * Runtime.getRuntime().availableProcessors();
 
+    @Option( name = "-H", aliases = { "--header" }, metaVar = "HEADER",
+             usage = "File to supply option values normally specified on command line which will cover other options declared in cli. " +
+                     "This supports ini-style format, uses option alias as the param name per line, " +
+                     "example:\nno-metadata (no need to specify its boolean value)\ndownload=./repository\nFILES=manifest.txt" )
+    private File headerFile;
+
     @Option( name = "-M", aliases = { "--no-metadata" },
              usage = "Do NOT generate maven-metadata.xml files for downloaded content" )
     private boolean skipMetadata;
@@ -129,6 +135,14 @@ public class Options
         System.err.println();
         parser.printUsage( System.err );
         System.err.println();
+    }
+
+    public File getHeaderFile() {
+        return headerFile;
+    }
+
+    public void setHeaderFile(File headerFile) {
+        this.headerFile = headerFile;
     }
 
     public List<String> getBaseUrls()

@@ -1,6 +1,8 @@
 package com.redhat.red.offliner;
 
+import com.google.common.collect.Lists;
 import com.redhat.red.offliner.cli.Main;
+import com.redhat.red.offliner.cli.Options;
 import com.redhat.red.offliner.model.ArtifactList;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -11,19 +13,16 @@ import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.atlas.ident.util.ArtifactPathInfo;
 import org.commonjava.maven.atlas.ident.version.SingleVersion;
+import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class OfflinerUtils
 {
@@ -167,4 +166,51 @@ public class OfflinerUtils
         }
     }
 
+    public static Options processArgsWithHeader( Options options )
+            throws CmdLineException
+    {
+        File headerFile = options.getHeaderFile();
+        if ( headerFile == null || !headerFile.exists() || !headerFile.isFile() )
+        {
+            System.out.println( "No appropriate header file provided." );
+            return options;
+        }
+        Properties properties = new Properties();
+        try ( InputStream stream = new FileInputStream( headerFile ) )
+        {
+            properties.load(stream);
+        }
+        catch ( IOException e )
+        {
+            e.printStackTrace();
+            System.err.println( "Failed to load header file." );
+            System.exit( 1 );
+        }
+        List<String> headerArgs = Lists.newArrayList();
+        for ( Object property : properties.keySet() )
+        {
+            String key = String.valueOf( property ).trim();
+            String value = String.valueOf( properties.get( property ) ).trim();
+            if ( key.equals("header") )
+            {
+                System.out.println( "Header option declared in header file will be ignored." );
+                continue;
+            }
+            if ( key.equals("FILES") )
+            {
+                headerArgs.add( value );
+                continue;
+            }
+            headerArgs.add( "--" + key );
+            if ( value.isEmpty() )
+            {
+                // This is used for boolean option, just like: no-metadata
+                continue;
+            }
+            headerArgs.add( value );
+        }
+        Options newOpt = new Options();
+        newOpt.parseArgs( headerArgs.toArray( new String[ headerArgs.size() ] ) );
+        return newOpt;
+    }
 }

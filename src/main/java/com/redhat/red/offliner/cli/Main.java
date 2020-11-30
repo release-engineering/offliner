@@ -112,9 +112,10 @@ public class Main
         int downloaded = getDownloaded();
         int avoided = getAvoided();
         Map<String, Throwable> errors = getErrors();
+        Map<String, String> warns = getWarns();
 
-        System.out.printf( "%d downloads succeeded.\n%d downloads avoided.\n%d downloads failed.\n\n", downloaded,
-                           avoided, errors.size() );
+        System.out.printf( "%d downloads succeeded.\n%d downloads avoided.\n%d downloads warned.\n%d downloads failed.\n\n", downloaded,
+                           avoided, warns.size(), errors.size() );
 
         if ( !errors.isEmpty() )
         {
@@ -152,5 +153,10 @@ public class Main
     public Map<String, Throwable> getErrors()
     {
         return result == null ? Collections.emptyMap() : result.getErrors();
+    }
+
+    public Map<String, String> getWarns()
+    {
+        return result == null ? Collections.emptyMap() : result.getWarns();
     }
 }

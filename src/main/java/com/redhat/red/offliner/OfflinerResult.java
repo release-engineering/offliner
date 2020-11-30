@@ -16,6 +16,8 @@ public class OfflinerResult
 
     private Map<String, Throwable> errors = new ConcurrentHashMap<>();
 
+    private Map<String, String> warns = new ConcurrentHashMap<>();
+
     public OfflinerResult( final OfflinerRequest request )
     {
         this.request = request;
@@ -89,5 +91,15 @@ public class OfflinerResult
     public void addError( final String path, final Exception error )
     {
         this.errors.put( path, error );
+    }
+
+    public Map<String, String> getWarns()
+    {
+        return warns;
+    }
+
+    public void addWarn( final String path, final String warn )
+    {
+        this.warns.put(path, warn);
     }
 }

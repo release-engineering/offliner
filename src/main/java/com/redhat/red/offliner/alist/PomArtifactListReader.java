@@ -58,6 +58,7 @@ import java.util.regex.Pattern;
  *
  * Supported files are those ending with .pom or named pom.xml.
  */
+@Deprecated
 public class PomArtifactListReader
     implements ArtifactListReader
 {
@@ -297,7 +298,12 @@ public class PomArtifactListReader
     public boolean supports( final File file )
     {
         String filename = file.getName();
-        return "pom.xml".equals( filename ) || filename.endsWith( ".pom" );
+        boolean result = "pom.xml".equals( filename ) || filename.endsWith( ".pom" );
+        if ( result )
+        {
+            System.out.println( "WARN: Maven POM manifest-file format is deprecated and will be removed in future." );
+        }
+        return result;
     }
 
     private static class TypeMapping

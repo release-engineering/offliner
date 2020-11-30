@@ -42,6 +42,7 @@ import java.util.Set;
  * <a href="https://commonjava.github.io/indy/user/addons/folo/index.html">https://commonjava.github.io/indy/user/addons/folo/index.html</a>
  * Created by jdcasey on 11/20/15.
  */
+@Deprecated
 public class FoloReportArtifactListReader
     implements ArtifactListReader
 {
@@ -110,6 +111,11 @@ public class FoloReportArtifactListReader
     @Override
     public boolean supports( File file )
     {
-        return file.getName().endsWith( ".json" );
+        boolean result = file.getName().endsWith( ".json" );
+        if ( result )
+        {
+            System.out.println( "WARN: Folo manifest-file format is deprecated and will be removed in future." );
+        }
+        return result;
     }
 }

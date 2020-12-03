@@ -26,6 +26,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.redhat.red.offliner.cli.Options.HEADER_BREAK_REGEX;
+import static com.redhat.red.offliner.cli.Options.HEADER_START;
+
 /**
  * Artifact list paths reader which reads the paths from a plaintext file. On each line a relative path to the
  * repository root is expected. The reader simply reads the lines and returns them. The lines are not trimmed in any way
@@ -48,6 +51,20 @@ public class PlaintextArtifactListReader implements ArtifactListReader
             return null;
         }
 
+        if ( contents.get(0).equals( HEADER_START ) )
+        {
+            List<String> headers = new ArrayList<>();
+            for ( String c : contents )
+            {
+                headers.add( c );
+                if ( c.matches( HEADER_BREAK_REGEX ) )
+                {
+                    break;
+                }
+            }
+            contents.removeAll( headers );
+        }
+
         for ( String c : contents )
         {
             c = c.trim();
@@ -56,7 +73,6 @@ public class PlaintextArtifactListReader implements ArtifactListReader
                 //common comment types.
                 continue;
             }
-
             // handle potential for spaces around the comma.
             String[] cArr = c.split( "\\s*,\\s*" );
             if ( cArr.length == 0 )

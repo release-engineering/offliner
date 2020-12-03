@@ -38,15 +38,13 @@ public class Options
 
     public static final String ERROR_LOG = "errors.log";
 
+    public static final String HEADER_START = "#header";
+
+    public static final String HEADER_BREAK_REGEX = "---.+";
+
     private static final File DEFAULT_DOWNLOADS = new File( "repository" );
 
     private static final Integer DEFAULT_THREADS = 4 * Runtime.getRuntime().availableProcessors();
-
-    @Option( name = "-H", aliases = { "--header" }, metaVar = "HEADER",
-             usage = "File to supply option values normally specified on command line which will cover other options declared in cli. " +
-                     "This supports ini-style format, uses option alias as the param name per line, " +
-                     "example:\nno-metadata (no need to specify its boolean value)\ndownload=./repository\nFILES=manifest.txt" )
-    private File headerFile;
 
     @Option( name = "-M", aliases = { "--no-metadata" },
              usage = "Do NOT generate maven-metadata.xml files for downloaded content" )
@@ -100,18 +98,22 @@ public class Options
     @Option( name = "-h", aliases = { "--help" }, help = true, usage = "Print this help screen and exit" )
     private boolean help;
 
-    @Argument( multiValued = true, metaVar = "FILES", usage = "List of files containing artifact paths to download" )
+    @Argument( multiValued = true, metaVar = "FILES", usage = "List of files containing artifact paths to download. " +
+            "At the header of the manifest(text-listing) file, option and its value could be declared which normally specify on CLI. " +
+            "Header options and values should format as ini-style, option alias should be used as the param name per line. " +
+            "Note, the options in CLI arguments line will cover the header ones.\n" +
+            "Example:\n" +
+            "#header\n"+
+            "no-metadata (no need to specify its boolean value)\n" +
+            "download=./repo\n" +
+            "----\n" )
     private List<String> locations;
 
     public boolean parseArgs( final String[] args )
             throws CmdLineException
     {
-        final int cols = ( System.getenv( "COLUMNS" ) == null ? 100 : Integer.valueOf( System.getenv( "COLUMNS" ) ) );
-        final ParserProperties props = ParserProperties.defaults().withUsageWidth( cols );
-
-        final CmdLineParser parser = new CmdLineParser( this, props );
         boolean canStart = true;
-        parser.parseArgument( args );
+        CmdLineParser parser = doParse( args );
 
         if ( isHelp() )
         {
@@ -120,6 +122,17 @@ public class Options
         }
 
         return canStart;
+    }
+
+    public CmdLineParser doParse( final String[] args )
+            throws CmdLineException
+    {
+        final int cols = ( System.getenv( "COLUMNS" ) == null ? 100 : Integer.valueOf( System.getenv( "COLUMNS" ) ) );
+        final ParserProperties props = ParserProperties.defaults().withUsageWidth( cols );
+
+        final CmdLineParser parser = new CmdLineParser( this, props );
+        parser.parseArgument( args );
+        return parser;
     }
 
     public static void printUsage( final CmdLineParser parser, final CmdLineException error )
@@ -135,14 +148,6 @@ public class Options
         System.err.println();
         parser.printUsage( System.err );
         System.err.println();
-    }
-
-    public File getHeaderFile() {
-        return headerFile;
-    }
-
-    public void setHeaderFile(File headerFile) {
-        this.headerFile = headerFile;
     }
 
     public List<String> getBaseUrls()

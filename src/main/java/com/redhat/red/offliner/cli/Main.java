@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static com.redhat.red.offliner.Offliner.SEPARATING_LINE;
-import static com.redhat.red.offliner.OfflinerUtils.processArgsWithHeader;
+import static com.redhat.red.offliner.OfflinerUtils.parseArgsWithHeader;
 
 /**
  * Entry point to Offliner, this class is responsible for orchestrating the entire process.
@@ -58,9 +58,8 @@ public class Main
         boolean start = false;
         try
         {
-            start = opts.parseArgs( args );
-            opts = processArgsWithHeader( opts );
-            start = start && !opts.isHelp();
+            String[] newArgs = parseArgsWithHeader( args );
+            start = opts.parseArgs( newArgs );
         }
         catch ( final CmdLineException e )
         {

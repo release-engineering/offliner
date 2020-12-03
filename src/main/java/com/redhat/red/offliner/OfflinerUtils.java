@@ -1,11 +1,11 @@
 package com.redhat.red.offliner;
 
-import com.google.common.collect.Lists;
 import com.redhat.red.offliner.cli.Main;
 import com.redhat.red.offliner.cli.Options;
 import com.redhat.red.offliner.model.ArtifactList;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.artifact.repository.metadata.Versioning;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
@@ -18,11 +18,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.*;
+
+import static com.redhat.red.offliner.cli.Options.HEADER_BREAK_REGEX;
+import static com.redhat.red.offliner.cli.Options.HEADER_START;
 
 public class OfflinerUtils
 {
@@ -166,51 +167,70 @@ public class OfflinerUtils
         }
     }
 
-    public static Options processArgsWithHeader( Options options )
+    /**
+     * Parse the original arguments to pull the manifests, read their header portions
+     * then wrap and append them to be the new arguments.
+     * @param args
+     * @return
+     * @throws CmdLineException
+     */
+    public static String[] parseArgsWithHeader( String[] args )
             throws CmdLineException
     {
-        File headerFile = options.getHeaderFile();
-        if ( headerFile == null || !headerFile.exists() || !headerFile.isFile() )
+        Options options = new Options();
+        options.doParse( args );
+        List<String> manifests = options.getLocations();
+        if ( manifests == null )
         {
-            System.out.println( "No appropriate header file provided." );
-            return options;
+            return args;
         }
-        Properties properties = new Properties();
-        try ( InputStream stream = new FileInputStream( headerFile ) )
+        List<String> headerArgs = new ArrayList<>();
+        for ( String manifest : manifests )
         {
-            properties.load(stream);
-        }
-        catch ( IOException e )
-        {
-            e.printStackTrace();
-            System.err.println( "Failed to load header file." );
-            System.exit( 1 );
-        }
-        List<String> headerArgs = Lists.newArrayList();
-        for ( Object property : properties.keySet() )
-        {
-            String key = String.valueOf( property ).trim();
-            String value = String.valueOf( properties.get( property ) ).trim();
-            if ( key.equals("header") )
+            File file = new File( manifest );
+            List<String> contents = new ArrayList<>();
+            try
             {
-                System.out.println( "Header option declared in header file will be ignored." );
+                contents = FileUtils.readLines( file );
+            }
+            catch ( IOException e )
+            {
+                e.printStackTrace();
+                System.err.println( "Failed to read header in manifest file." );
+                System.exit( 1 );
+            }
+            if ( null == contents || contents.isEmpty() || !contents.get(0).equals( "#header" ) )
+            {
                 continue;
             }
-            if ( key.equals("FILES") )
+            for ( String c : contents )
             {
-                headerArgs.add( value );
-                continue;
+                if ( c.equals( HEADER_START ) )
+                {
+                    continue;
+                }
+                if ( c.matches( HEADER_BREAK_REGEX ) )
+                {
+                    break;
+                }
+                String[] cArr = c.split( "\\s*=\\s*" );
+                if ( cArr.length == 0 )
+                {
+                    continue;
+                }
+                else if ( cArr.length == 1 )
+                {
+                    headerArgs.add( "--"+cArr[0] );
+                }
+                else
+                {
+                    headerArgs.add( "--"+cArr[0] );
+                    headerArgs.add( cArr[1] );
+                }
             }
-            headerArgs.add( "--" + key );
-            if ( value.isEmpty() )
-            {
-                // This is used for boolean option, just like: no-metadata
-                continue;
-            }
-            headerArgs.add( value );
         }
-        Options newOpt = new Options();
-        newOpt.parseArgs( headerArgs.toArray( new String[ headerArgs.size() ] ) );
-        return newOpt;
+        String[] headerArgsArr = headerArgs.toArray( new String[ headerArgs.size() ] );
+        String[] newArgs = (String[]) ArrayUtils.addAll( headerArgsArr, args );
+        return newArgs;
     }
 }

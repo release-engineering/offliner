@@ -3,6 +3,7 @@ package com.redhat.red.offliner;
 import com.redhat.red.offliner.cli.Main;
 import com.redhat.red.offliner.cli.Options;
 import com.redhat.red.offliner.model.ArtifactList;
+import io.honeycomb.beeline.tracing.Span;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.ArrayUtils;
@@ -24,6 +25,8 @@ import java.util.*;
 
 import static com.redhat.red.offliner.cli.Options.HEADER_BREAK_REGEX;
 import static com.redhat.red.offliner.cli.Options.HEADER_START;
+
+import static com.redhat.red.offliner.Offliner.NANOS_PER_MILLISECOND;
 
 public class OfflinerUtils
 {
@@ -199,7 +202,7 @@ public class OfflinerUtils
                 System.err.println( "Failed to read header in manifest file." );
                 System.exit( 1 );
             }
-            if ( null == contents || contents.isEmpty() || !contents.get(0).equals( "#header" ) )
+            if ( null == contents || contents.isEmpty() || !contents.get(0).equals( HEADER_START ) )
             {
                 continue;
             }
@@ -232,5 +235,21 @@ public class OfflinerUtils
         String[] headerArgsArr = headerArgs.toArray( new String[ headerArgs.size() ] );
         String[] newArgs = (String[]) ArrayUtils.addAll( headerArgsArr, args );
         return newArgs;
+    }
+
+    /**
+     * Mark the latency metric for honeycomb span
+     * @param start
+     * @param span
+     * @param metric
+     */
+    public static void markLatency( long start, Span span, String metric )
+    {
+        if ( span != null )
+        {
+            long end = System.nanoTime();
+            span.addField( metric, ( end - start ) / NANOS_PER_MILLISECOND );
+            span.close();
+        }
     }
 }

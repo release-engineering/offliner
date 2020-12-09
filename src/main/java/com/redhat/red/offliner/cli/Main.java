@@ -20,18 +20,18 @@ import com.redhat.red.offliner.Offliner;
 import com.redhat.red.offliner.OfflinerException;
 import com.redhat.red.offliner.OfflinerRequest;
 import com.redhat.red.offliner.OfflinerResult;
+import io.honeycomb.beeline.DefaultBeeline;
+import io.honeycomb.beeline.tracing.Span;
 import org.kohsuke.args4j.CmdLineException;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
-import static com.redhat.red.offliner.Offliner.SEPARATING_LINE;
+import static com.redhat.red.offliner.Offliner.*;
 import static com.redhat.red.offliner.OfflinerUtils.parseArgsWithHeader;
 
 /**
@@ -45,12 +45,7 @@ public class Main
 
     private OfflinerResult result;
 
-    public Main(Options opts)
-            throws MalformedURLException
-    {
-        this.opts = opts;
-        this.offliner = new Offliner( OfflinerConfig.builder().fromOptions( opts ).build() );
-    }
+    private static DefaultBeeline beeline;
 
     public static void main( final String[] args )
     {
@@ -72,6 +67,7 @@ public class Main
         {
             try
             {
+                loadHoneycombProperties();
                 new Main( opts ).run();
             }
             catch ( final MalformedURLException e )
@@ -94,15 +90,39 @@ public class Main
             {
                 e.printStackTrace();
             }
+            finally
+            {
+                if ( beeline != null )
+                {
+                    beeline.getBeeline().getTracer().endTrace();
+                    beeline.close();
+                }
+            }
         }
+    }
+
+    public Main(Options opts)
+            throws MalformedURLException {
+        this.opts = opts;
+        this.offliner = new Offliner( OfflinerConfig.builder().fromOptions( opts ).build() );
     }
 
     public OfflinerResult run()
             throws OfflinerException, ExecutionException, InterruptedException, IOException
     {
-        this.result = offliner.copyOffline( OfflinerRequest.builder().fromOptions( opts ).build() );
+        long start = System.nanoTime();
+        Span rootSpan = beeline == null ? null : beeline.startSpan( "root" );
+        this.result = offliner.copyOffline( OfflinerRequest.builder().fromOptions( opts).build(), beeline, rootSpan );
 
+        long startLogErr = System.nanoTime();
         logErrors();
+        if ( rootSpan != null )
+        {
+            long end = System.nanoTime();
+            rootSpan.addField( "log_err_ms", ( end - startLogErr ) / NANOS_PER_MILLISECOND );
+            rootSpan.addField( "total_timing_ms", ( end - start ) / NANOS_PER_MILLISECOND );
+            rootSpan.close();
+        }
         return this.result;
     }
 
@@ -139,6 +159,30 @@ public class Main
                 System.err.println( "Failed to write download errors to: " + Options.ERROR_LOG
                                             + ". See above for more information." );
             }
+        }
+    }
+
+    private static void loadHoneycombProperties()
+    {
+        String path = System.getProperty( "honeycomb" );
+        if ( path != null && !path.trim().isEmpty() )
+        {
+            Properties properties = new Properties();
+            try ( InputStream stream = new FileInputStream( path ) )
+            {
+                properties.load( stream );
+            }
+            catch ( IOException e )
+            {
+                e.printStackTrace();
+                System.err.println( "Failed to load honeycomb properties." );
+                System.exit( 1 );
+            }
+            System.out.printf( "Reading honeycomb properties, dataset: %s, service: %s.\n", properties.getProperty( HONEYCOMB_DATASET ),
+                    properties.getProperty( HONEYCOMB_SERVICE_NAME ) );
+            beeline = DefaultBeeline.getInstance( properties.getProperty( HONEYCOMB_DATASET ),
+                    properties.getProperty( HONEYCOMB_SERVICE_NAME ),
+                    properties.getProperty( HONEYCOMB_WRITE_KEY ) );
         }
     }
 

@@ -1,9 +1,11 @@
 package com.redhat.red.offliner;
 
 import com.redhat.red.offliner.cli.Main;
+import com.redhat.red.offliner.cli.Options;
 import com.redhat.red.offliner.model.ArtifactList;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.artifact.repository.metadata.Versioning;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
@@ -11,19 +13,17 @@ import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.atlas.ident.util.ArtifactPathInfo;
 import org.commonjava.maven.atlas.ident.version.SingleVersion;
+import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
+import static com.redhat.red.offliner.cli.Options.HEADER_BREAK_REGEX;
+import static com.redhat.red.offliner.cli.Options.HEADER_START;
 
 public class OfflinerUtils
 {
@@ -167,4 +167,70 @@ public class OfflinerUtils
         }
     }
 
+    /**
+     * Parse the original arguments to pull the manifests, read their header portions
+     * then wrap and append them to be the new arguments.
+     * @param args
+     * @return
+     * @throws CmdLineException
+     */
+    public static String[] parseArgsWithHeader( String[] args )
+            throws CmdLineException
+    {
+        Options options = new Options();
+        options.doParse( args );
+        List<String> manifests = options.getLocations();
+        if ( manifests == null )
+        {
+            return args;
+        }
+        List<String> headerArgs = new ArrayList<>();
+        for ( String manifest : manifests )
+        {
+            File file = new File( manifest );
+            List<String> contents = new ArrayList<>();
+            try
+            {
+                contents = FileUtils.readLines( file );
+            }
+            catch ( IOException e )
+            {
+                e.printStackTrace();
+                System.err.println( "Failed to read header in manifest file." );
+                System.exit( 1 );
+            }
+            if ( null == contents || contents.isEmpty() || !contents.get(0).equals( "#header" ) )
+            {
+                continue;
+            }
+            for ( String c : contents )
+            {
+                if ( c.equals( HEADER_START ) )
+                {
+                    continue;
+                }
+                if ( c.matches( HEADER_BREAK_REGEX ) )
+                {
+                    break;
+                }
+                String[] cArr = c.split( "\\s*=\\s*" );
+                if ( cArr.length == 0 )
+                {
+                    continue;
+                }
+                else if ( cArr.length == 1 )
+                {
+                    headerArgs.add( "--"+cArr[0] );
+                }
+                else
+                {
+                    headerArgs.add( "--"+cArr[0] );
+                    headerArgs.add( cArr[1] );
+                }
+            }
+        }
+        String[] headerArgsArr = headerArgs.toArray( new String[ headerArgs.size() ] );
+        String[] newArgs = (String[]) ArrayUtils.addAll( headerArgsArr, args );
+        return newArgs;
+    }
 }

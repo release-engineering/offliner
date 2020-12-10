@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static com.redhat.red.offliner.Offliner.SEPARATING_LINE;
+import static com.redhat.red.offliner.OfflinerUtils.parseArgsWithHeader;
 
 /**
  * Entry point to Offliner, this class is responsible for orchestrating the entire process.
@@ -44,13 +45,21 @@ public class Main
 
     private OfflinerResult result;
 
+    public Main(Options opts)
+            throws MalformedURLException
+    {
+        this.opts = opts;
+        this.offliner = new Offliner( OfflinerConfig.builder().fromOptions( opts ).build() );
+    }
+
     public static void main( final String[] args )
     {
-        final Options opts = new Options();
+        Options opts = new Options();
         boolean start = false;
         try
         {
-            start = opts.parseArgs( args );
+            String[] newArgs = parseArgsWithHeader( args );
+            start = opts.parseArgs( newArgs );
         }
         catch ( final CmdLineException e )
         {
@@ -88,17 +97,10 @@ public class Main
         }
     }
 
-    public Main(Options opts)
-            throws MalformedURLException
-    {
-        this.opts = opts;
-        this.offliner = new Offliner( OfflinerConfig.builder().fromOptions( opts ).build() );
-    }
-
     public OfflinerResult run()
             throws OfflinerException, ExecutionException, InterruptedException, IOException
     {
-        this.result = offliner.copyOffline( OfflinerRequest.builder().fromOptions( opts).build() );
+        this.result = offliner.copyOffline( OfflinerRequest.builder().fromOptions( opts ).build() );
 
         logErrors();
         return this.result;

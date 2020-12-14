@@ -22,6 +22,8 @@ import com.redhat.red.offliner.alist.ArtifactListReader;
 import com.redhat.red.offliner.alist.FoloReportArtifactListReader;
 import com.redhat.red.offliner.alist.PomArtifactListReader;
 import com.redhat.red.offliner.model.ArtifactList;
+import io.honeycomb.beeline.DefaultBeeline;
+import io.honeycomb.beeline.tracing.Span;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -40,6 +42,7 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.enterprise.inject.Default;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -57,9 +60,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.redhat.red.offliner.OfflinerUtils.generateMetadata;
-import static com.redhat.red.offliner.OfflinerUtils.patchPathsForDownload;
-import static com.redhat.red.offliner.OfflinerUtils.searchForPomPaths;
+import static com.redhat.red.offliner.OfflinerUtils.*;
 import static org.apache.commons.codec.digest.DigestUtils.sha256Hex;
 import static org.apache.commons.lang.StringUtils.isBlank;
 
@@ -74,6 +75,14 @@ public class Offliner
     public static final String SHA_SUFFIX = ".sha1";
 
     public static final String MD5_SUFFIX = ".md5";
+
+    public static final double NANOS_PER_MILLISECOND = 1E6;
+
+    public static final String HONEYCOMB_DATASET = "honeycomb.dataset";
+
+    public static final String HONEYCOMB_SERVICE_NAME = "honeycomb.service.name";
+
+    public static final String HONEYCOMB_WRITE_KEY = "honeycomb.write.key";
 
     private String proxyHost;
 
@@ -128,7 +137,7 @@ public class Offliner
     }
 
     /**
-     * Calls {@link #download(ArtifactList, OfflinerRequest, Set, ExecutorCompletionService)} for each input location,
+     * Calls {@link #download(ArtifactList, OfflinerRequest, Set, ExecutorCompletionService, DefaultBeeline)} for each input location,
      * which spawns a bunch of new {@link Callable} instances, each responsible for downloading a single file, then
      * returns the number of new Callables added. Then, this method retrieves the next completed download from the
      * {@link ExecutorCompletionService} that manages the download tasks, logging results and iterating until all
@@ -138,7 +147,7 @@ public class Offliner
      * @return OfflinerResult that contains the original request plus the downloaded, avoided, and error captures for all
      * artifacts included in the lists / list files from the request.
      */
-    public OfflinerResult copyOffline( OfflinerRequest request )
+    public OfflinerResult copyOffline( OfflinerRequest request, DefaultBeeline beeline, Span rootSpan )
             throws IOException, OfflinerException, ExecutionException, InterruptedException
     {
         logger.info( "Planning download from:\n  " + StringUtils.join( request.getRepositoryUrls(), "\n  " ) );
@@ -171,14 +180,14 @@ public class Offliner
         OfflinerResult runResult = new OfflinerResult( request );
         try
         {
+            long start = System.nanoTime();
             Set<String> seen = new HashSet<>();
             int total = 0;
             for ( final ArtifactList artifactList : artifactLists )
             {
                 logger.info( "Downloading up to {} artifacts from: {}", artifactList.size(), artifactList );
-                total += download( artifactList, request, seen, executor );
+                total += download( artifactList, request, seen, executor, beeline );
             }
-
             for ( int i = 0; i < total; i++ )
             {
                 logger.info( "Waiting for {} downloads\n", ( total - i ) );
@@ -210,7 +219,13 @@ public class Offliner
                     logger.debug( "<<<FAIL: {}\n", result.getPath() );
                 }
             }
-
+            if ( rootSpan != null )
+            {
+                long end = System.nanoTime();
+                double timing = ( end-start ) / NANOS_PER_MILLISECOND;
+                rootSpan.addField( "download_timing_ms", timing );
+                rootSpan.addField( "download_throughput", total / timing );
+            }
             Set<String> pomPaths = new HashSet<>();
             File download = request.getDownloadDirectory().getAbsoluteFile();
 
@@ -218,7 +233,13 @@ public class Offliner
 
             if ( !request.isMetadataSkipped() )
             {
+                long startMeta = System.nanoTime();
                 generateMetadata( pomPaths, download.getPath() );
+                if ( rootSpan != null )
+                {
+                    long endMeta = System.nanoTime();
+                    rootSpan.addField( "generate_metadata_ms", ( endMeta - startMeta ) / NANOS_PER_MILLISECOND );
+                }
             }
 
 
@@ -243,7 +264,7 @@ public class Offliner
      * @throws OfflinerException In case the artifact list file is not in a valid format (won't parse)
      */
     private int download( final ArtifactList artifactList, final OfflinerRequest request, Set<String> seen,
-                          final ExecutorCompletionService<DownloadResult> executor )
+                          final ExecutorCompletionService<DownloadResult> executor, final DefaultBeeline beeline )
     {
         final List<String> paths;
         List<String> baseUrls = request.getRepositoryUrls();
@@ -280,11 +301,10 @@ public class Offliner
         {
             if ( !seen.contains( path ) )
             {
-                executor.submit( newDownloader( request, path, checksums, baseUrls, cookieStore ) );
+                executor.submit( newDownloader( request, path, checksums, baseUrls, cookieStore, beeline ) );
                 count++;
             }
         }
-
         return count;
     }
 
@@ -324,9 +344,11 @@ public class Offliner
      */
     private Callable<DownloadResult> newDownloader( final OfflinerRequest offlinerRequest, final String path,
                                                     final Map<String, String> checksums, final List<String> baseUrls,
-                                                    final CookieStore cookieStore )
+                                                    final CookieStore cookieStore, final DefaultBeeline beeline)
     {
         return () -> {
+            Span downloadLatencySpan = beeline == null ? null : beeline.startSpan( "download latency" );
+            long start = System.nanoTime();
             final String name = Thread.currentThread().getName();
             Thread.currentThread().setName( "download--" + path );
             try
@@ -338,6 +360,7 @@ public class Offliner
                     if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) || null == checksums
                             .get( path ) )
                     {
+                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
                         return DownloadResult.avoid( path, true );
                     }
 
@@ -347,6 +370,7 @@ public class Offliner
 
                     if ( original.equals( current ) )
                     {
+                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
                         return DownloadResult.avoid( path, true );
                     }
                 }
@@ -368,6 +392,7 @@ public class Offliner
                     }
                     catch ( final Exception e )
                     {
+                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
                         return DownloadResult.error( path, e );
                     }
 
@@ -384,18 +409,22 @@ public class Offliner
                         {
                             try (ChecksumOutputStream out = new ChecksumOutputStream( new FileOutputStream( part )))
                             {
+                                long startChecksum = System.nanoTime();
                                 IOUtils.copy( response.getEntity().getContent(), out );
+                                markLatency( startChecksum, downloadLatencySpan, "checksum_latency_ms" );
                                 if ( checksums != null )
                                 {
                                     String checksum = checksums.get( path );
                                     if ( checksum != null && !isBlank( checksum ) && !out.getChecksum().isMatch( checksum ) )
                                     {
+                                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
                                         return DownloadResult.error( path, new IOException(
                                                 "Checksum mismatch on file: " + path + " (calculated: '" + out.getChecksum() + "'; expected: '" + checksum + "')" ) );
                                     }
                                 }
                             }
                             part.renameTo( target );
+                            markLatency( start, downloadLatencySpan, "download_latency_ms" );
                             return DownloadResult.success( baseUrl, path );
                         }
                         else if ( statusCode == 404 )
@@ -405,6 +434,7 @@ public class Offliner
                                 logger.warn( "<<<Not Found: " + url );
                                 if ( reposRemaining == 0 )
                                 {
+                                    markLatency( start, downloadLatencySpan, "download_latency_ms" );
                                     return DownloadResult.warn( path, "WARN: downloading path " + path + " was not "
                                                     + "found in any of the provided repositories." );
                                 }
@@ -412,6 +442,7 @@ public class Offliner
                             logger.error( "<<<Not Found: " + url );
                             if ( reposRemaining == 0 )
                             {
+                                markLatency( start, downloadLatencySpan, "download_latency_ms" );
                                 return DownloadResult.error( path, new IOException(
                                         "Error downloading path: " + path + ". The artifact was not "
                                                 + "found in any of the provided repositories." ) );
@@ -427,6 +458,7 @@ public class Offliner
 
                             if ( reposRemaining == 0 )
                             {
+                                markLatency( start, downloadLatencySpan, "download_latency_ms" );
                                 return DownloadResult.error( path, new IOException( message ) );
                             }
                             else
@@ -442,7 +474,7 @@ public class Offliner
                         {
                             logger.error( "Download failed for: " + url, e );
                         }
-
+                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
                         return DownloadResult.error( path, new IOException( "URL: " + url + " failed.", e ) );
                     }
                     finally
@@ -456,7 +488,7 @@ public class Offliner
             {
                 Thread.currentThread().setName( name );
             }
-
+            markLatency( start, downloadLatencySpan, "download_latency_ms" );
             return null;
         };
     }

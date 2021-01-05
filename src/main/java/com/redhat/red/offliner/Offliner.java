@@ -28,10 +28,13 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHost;
+import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.CookieStore;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.conn.ConnectionPoolTimeoutException;
 import org.apache.http.conn.routing.HttpRoutePlanner;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -45,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,6 +87,12 @@ public class Offliner
 
     public static final String HONEYCOMB_WRITE_KEY = "honeycomb.write.key";
 
+    private static final int CONNECTION_REQUEST_TIMEOUT = 30 * 1000; // 30s
+
+    private static final int CONNECTION_TIMEOUT = 60 * 1000; // 60s
+
+    private static final int SOCKET_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+
     private String proxyHost;
 
     private int proxyPort = 8080;
@@ -109,7 +119,33 @@ public class Offliner
         final PoolingHttpClientConnectionManager ccm = new PoolingHttpClientConnectionManager();
         ccm.setMaxTotal( config.getConnections() );
 
-        final HttpClientBuilder builder = HttpClients.custom().setConnectionManager( ccm );
+        RequestConfig rc = RequestConfig.custom()
+                .setConnectionRequestTimeout( CONNECTION_REQUEST_TIMEOUT )
+                .setConnectTimeout( CONNECTION_TIMEOUT )
+                .setSocketTimeout( SOCKET_TIMEOUT )
+                .build();
+
+        final HttpClientBuilder builder = HttpClients.custom().setConnectionManager( ccm ).setDefaultRequestConfig( rc )
+                .setRetryHandler( ( exception, executionCount, context ) ->
+                        {
+                            if ( executionCount > 3 ) {
+                                return false;
+                            }
+                            if ( exception instanceof NoHttpResponseException ) {
+                                logger.info( "NoHttpResponse start to retry times:" + executionCount );
+                                return true;
+                            }
+                            if ( exception instanceof SocketTimeoutException ) {
+                                logger.info( "SocketTimeout start to retry times:" + executionCount );
+                                return true;
+                            }
+                            if ( exception instanceof ConnectionPoolTimeoutException ) {
+                                logger.info( "ConnectionPoolTimeout start to retry times:" + executionCount );
+                                return true;
+                            }
+                            return false;
+                        }
+                );
 
         final String proxy = config.getProxy();
         proxyHost = proxy;

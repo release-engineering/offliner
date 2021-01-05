@@ -42,7 +42,6 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.enterprise.inject.Default;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -224,7 +223,8 @@ public class Offliner
                 long end = System.nanoTime();
                 double timing = ( end-start ) / NANOS_PER_MILLISECOND;
                 rootSpan.addField( "download_timing_ms", timing );
-                rootSpan.addField( "download_throughput", total / timing );
+                rootSpan.addField( "download_total", total );
+                rootSpan.addField( "download_throughput", total / ( timing / 1000 ) );
             }
             Set<String> pomPaths = new HashSet<>();
             File download = request.getDownloadDirectory().getAbsoluteFile();
@@ -360,7 +360,7 @@ public class Offliner
                     if ( null == checksums || checksums.isEmpty() || !checksums.containsKey( path ) || null == checksums
                             .get( path ) )
                     {
-                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                        markLatency( start, downloadLatencySpan, "download_latency_nano" );
                         return DownloadResult.avoid( path, true );
                     }
 
@@ -370,7 +370,7 @@ public class Offliner
 
                     if ( original.equals( current ) )
                     {
-                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                        markLatency( start, downloadLatencySpan, "download_latency_nano" );
                         return DownloadResult.avoid( path, true );
                     }
                 }
@@ -392,7 +392,7 @@ public class Offliner
                     }
                     catch ( final Exception e )
                     {
-                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                        markLatency( start, downloadLatencySpan, "download_latency_nano" );
                         return DownloadResult.error( path, e );
                     }
 
@@ -411,20 +411,20 @@ public class Offliner
                             {
                                 long startChecksum = System.nanoTime();
                                 IOUtils.copy( response.getEntity().getContent(), out );
-                                markLatency( startChecksum, downloadLatencySpan, "checksum_latency_ms" );
+                                markLatency( startChecksum, downloadLatencySpan, "checksum_latency_nano" );
                                 if ( checksums != null )
                                 {
                                     String checksum = checksums.get( path );
                                     if ( checksum != null && !isBlank( checksum ) && !out.getChecksum().isMatch( checksum ) )
                                     {
-                                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                                        markLatency( start, downloadLatencySpan, "download_latency_nano" );
                                         return DownloadResult.error( path, new IOException(
                                                 "Checksum mismatch on file: " + path + " (calculated: '" + out.getChecksum() + "'; expected: '" + checksum + "')" ) );
                                     }
                                 }
                             }
                             part.renameTo( target );
-                            markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                            markLatency( start, downloadLatencySpan, "download_latency_nano" );
                             return DownloadResult.success( baseUrl, path );
                         }
                         else if ( statusCode == 404 )
@@ -434,7 +434,7 @@ public class Offliner
                                 logger.warn( "<<<Not Found: " + url );
                                 if ( reposRemaining == 0 )
                                 {
-                                    markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                                    markLatency( start, downloadLatencySpan, "download_latency_nano" );
                                     return DownloadResult.warn( path, "WARN: downloading path " + path + " was not "
                                                     + "found in any of the provided repositories." );
                                 }
@@ -442,7 +442,7 @@ public class Offliner
                             logger.error( "<<<Not Found: " + url );
                             if ( reposRemaining == 0 )
                             {
-                                markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                                markLatency( start, downloadLatencySpan, "download_latency_nano" );
                                 return DownloadResult.error( path, new IOException(
                                         "Error downloading path: " + path + ". The artifact was not "
                                                 + "found in any of the provided repositories." ) );
@@ -458,7 +458,7 @@ public class Offliner
 
                             if ( reposRemaining == 0 )
                             {
-                                markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                                markLatency( start, downloadLatencySpan, "download_latency_nano" );
                                 return DownloadResult.error( path, new IOException( message ) );
                             }
                             else
@@ -474,7 +474,7 @@ public class Offliner
                         {
                             logger.error( "Download failed for: " + url, e );
                         }
-                        markLatency( start, downloadLatencySpan, "download_latency_ms" );
+                        markLatency( start, downloadLatencySpan, "download_latency_nano" );
                         return DownloadResult.error( path, new IOException( "URL: " + url + " failed.", e ) );
                     }
                     finally
@@ -488,7 +488,7 @@ public class Offliner
             {
                 Thread.currentThread().setName( name );
             }
-            markLatency( start, downloadLatencySpan, "download_latency_ms" );
+            markLatency( start, downloadLatencySpan, "download_latency_nano" );
             return null;
         };
     }

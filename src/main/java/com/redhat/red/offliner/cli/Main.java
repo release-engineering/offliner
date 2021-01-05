@@ -112,8 +112,7 @@ public class Main
     {
         long start = System.nanoTime();
         Span rootSpan = beeline == null ? null : beeline.startSpan( "root" );
-        this.result = offliner.copyOffline( OfflinerRequest.builder().fromOptions( opts).build(), beeline, rootSpan );
-
+        this.result = offliner.copyOffline( OfflinerRequest.builder().fromOptions( opts ).build(), beeline, rootSpan );
         long startLogErr = System.nanoTime();
         logErrors();
         if ( rootSpan != null )
@@ -121,6 +120,8 @@ public class Main
             long end = System.nanoTime();
             rootSpan.addField( "log_err_ms", ( end - startLogErr ) / NANOS_PER_MILLISECOND );
             rootSpan.addField( "total_timing_ms", ( end - start ) / NANOS_PER_MILLISECOND );
+            rootSpan.addField( "set_thread", opts.getThreads() );
+            rootSpan.addField( "set_connection", opts.getConnections() );
             rootSpan.close();
         }
         return this.result;

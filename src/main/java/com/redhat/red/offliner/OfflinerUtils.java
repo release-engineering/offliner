@@ -26,8 +26,6 @@ import java.util.*;
 import static com.redhat.red.offliner.cli.Options.HEADER_BREAK_REGEX;
 import static com.redhat.red.offliner.cli.Options.HEADER_START;
 
-import static com.redhat.red.offliner.Offliner.NANOS_PER_MILLISECOND;
-
 public class OfflinerUtils
 {
     /**
@@ -248,7 +246,7 @@ public class OfflinerUtils
         if ( span != null )
         {
             long end = System.nanoTime();
-            span.addField( metric, ( end - start ) / NANOS_PER_MILLISECOND );
+            span.addField( metric, end - start );
             span.close();
         }
     }

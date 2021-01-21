@@ -30,7 +30,7 @@ import java.util.List;
 public class Options
 {
 
-    private static final int DEFAULT_CONNECTIONS = 200;
+    private static final int DEFAULT_CONNECTIONS = 500;
 
     public static final String DEFAULT_REPO_URL = "https://maven.repository.redhat.com/ga/all/";
 

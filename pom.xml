@@ -43,7 +43,7 @@
     <javaVersion>1.8</javaVersion>
     <version.org.apache.maven>3.3.3</version.org.apache.maven>
     <httpcoreVersion>4.4.9</httpcoreVersion>
-    <httpclientVersion>4.5.9</httpclientVersion>
+    <httpclientVersion>4.5.13</httpclientVersion>
     <jacksonVersion>2.10.1</jacksonVersion>
     <enforceManagedDeps>false</enforceManagedDeps>
 

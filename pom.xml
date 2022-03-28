@@ -67,9 +67,9 @@
       <version>1.9.9</version>
     </dependency>
     <dependency>
-      <groupId>org.commonjava.maven.atlas</groupId>
+      <groupId>org.commonjava.atlas</groupId>
       <artifactId>atlas-identities</artifactId>
-      <version>0.17.2</version>
+      <version>1.1.2</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>

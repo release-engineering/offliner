@@ -162,6 +162,16 @@
       <groupId>io.honeycomb.beeline</groupId>
       <artifactId>beeline-spring-boot-starter</artifactId>
       <version>1.5.0</version>
+      <exclusions>
+        <exclusion>
+           <groupId>org.apache.logging.log4j</groupId>
+           <artifactId>log4j-to-slf4j</artifactId>
+        </exclusion>
+         <exclusion>
+           <groupId>org.apache.logging.log4j</groupId>
+           <artifactId>log4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 

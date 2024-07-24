@@ -132,15 +132,15 @@ public class Offliner
                                 return false;
                             }
                             if ( exception instanceof NoHttpResponseException ) {
-                                logger.info( "NoHttpResponse start to retry times:" + executionCount );
+                                logger.debug( "NoHttpResponse start to retry times:" + executionCount );
                                 return true;
                             }
                             if ( exception instanceof SocketTimeoutException ) {
-                                logger.info( "SocketTimeout start to retry times:" + executionCount );
+                                logger.debug( "SocketTimeout start to retry times:" + executionCount );
                                 return true;
                             }
                             if ( exception instanceof ConnectionPoolTimeoutException ) {
-                                logger.info( "ConnectionPoolTimeout start to retry times:" + executionCount );
+                                logger.debug( "ConnectionPoolTimeout start to retry times:" + executionCount );
                                 return true;
                             }
                             return false;
@@ -185,7 +185,7 @@ public class Offliner
     public OfflinerResult copyOffline( OfflinerRequest request, DefaultBeeline beeline, Span rootSpan )
             throws IOException, OfflinerException, ExecutionException, InterruptedException
     {
-        logger.info( "Planning download from:\n  " + StringUtils.join( request.getRepositoryUrls(), "\n  " ) );
+        logger.debug( "Planning download from:\n  " + StringUtils.join( request.getRepositoryUrls(), "\n  " ) );
 
         List<ArtifactList> artifactLists = request.getArtifactLists();
 
@@ -200,7 +200,7 @@ public class Offliner
                 artifactLists.add( artifactList );
             }
 
-            logger.info( "Downloading up to " + artifactList.size() + " artifacts from: " + filepath );
+            logger.debug( "Downloading up to " + artifactList.size() + " artifacts from: " + filepath );
         }
 
         if ( artifactLists.isEmpty() )
@@ -220,12 +220,12 @@ public class Offliner
             int total = 0;
             for ( final ArtifactList artifactList : artifactLists )
             {
-                logger.info( "Downloading up to {} artifacts from: {}", artifactList.size(), artifactList );
+                logger.debug( "Downloading up to {} artifacts from: {}", artifactList.size(), artifactList );
                 total += download( artifactList, request, seen, executor, beeline );
             }
             for ( int i = 0; i < total; i++ )
             {
-                logger.info( "Waiting for {} downloads\n", ( total - i ) );
+                logger.debug( "Waiting for {} downloads\n", ( total - i ) );
 
                 Future<DownloadResult> task = executor.take();
                 DownloadResult result = task.get();
@@ -236,22 +236,22 @@ public class Offliner
                 else if ( result.isSuccess() )
                 {
                     runResult.addDownloaded();
-                    logger.debug( "<<<SUCCESS: {}\n", result.getPath() );
+                    logger.info( "<<<SUCCESS: {}\n", result.getPath() );
                 }
                 else if ( result.isAvoided() )
                 {
                     runResult.addAvoided();
-                    logger.debug( "<<<Avoided: {}\n", result.getPath() );
+                    logger.info( "<<<Avoided: {}\n", result.getPath() );
                 }
                 else if ( result.getWarn() != null )
                 {
                     runResult.addWarn( result.getPath(), result.getWarn() );
-                    logger.debug( "<<<WARN: {}\n", result.getPath() );
+                    logger.warn( "<<<WARN: {}\n", result.getPath() );
                 }
                 else
                 {
                     runResult.addError( result.getPath(), result.getError() );
-                    logger.debug( "<<<FAIL: {}\n", result.getPath() );
+                    logger.error( "<<<FAIL: {}\n", result.getPath() );
                 }
             }
             if ( rootSpan != null )
@@ -432,7 +432,7 @@ public class Offliner
                         return DownloadResult.error( path, e );
                     }
 
-                    logger.info( ">>>Downloading: " + url );
+                    logger.debug( ">>>Downloading: " + url );
 
                     final HttpClientContext context = new HttpClientContext();
                     context.setCookieStore( cookieStore );
@@ -467,7 +467,7 @@ public class Offliner
                         {
                             if ( path.endsWith( Offliner.MD5_SUFFIX ) || path.endsWith( Offliner.SHA_SUFFIX ) )
                             {
-                                logger.warn( "<<<Not Found: " + url );
+                                logger.debug( "<<<Not Found: " + url );
                                 if ( reposRemaining == 0 )
                                 {
                                     markLatency( start, downloadLatencySpan, "download_latency_nano" );
@@ -475,7 +475,7 @@ public class Offliner
                                                     + "found in any of the provided repositories." );
                                 }
                             }
-                            logger.error( "<<<Not Found: " + url );
+                            logger.debug( "<<<Not Found: " + url );
                             if ( reposRemaining == 0 )
                             {
                                 markLatency( start, downloadLatencySpan, "download_latency_nano" );
@@ -499,7 +499,7 @@ public class Offliner
                             }
                             else
                             {
-                                logger.error( "<<<" + message );
+                                logger.debug( "<<<" + message );
                             }
                         }
 
